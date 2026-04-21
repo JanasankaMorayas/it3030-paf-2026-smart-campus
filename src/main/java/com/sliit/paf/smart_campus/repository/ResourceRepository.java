@@ -2,8 +2,13 @@ package com.sliit.paf.smart_campus.repository;
 
 import com.sliit.paf.smart_campus.model.Resource;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ResourceRepository extends JpaRepository<Resource, Long> {
+public interface ResourceRepository extends JpaRepository<Resource, Long>, JpaSpecificationExecutor<Resource> {
+
+    boolean existsByResourceCodeIgnoreCase(String resourceCode);
+
+    boolean existsByResourceCodeIgnoreCaseAndIdNot(String resourceCode, Long id);
 }
