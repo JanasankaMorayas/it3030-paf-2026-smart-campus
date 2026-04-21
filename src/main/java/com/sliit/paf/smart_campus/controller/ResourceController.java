@@ -1,62 +1,71 @@
 package com.sliit.paf.smart_campus.controller;
 
-import com.sliit.paf.smart_campus.model.Resource;
+import com.sliit.paf.smart_campus.dto.CreateResourceRequest;
+import com.sliit.paf.smart_campus.dto.ResourceResponse;
+import com.sliit.paf.smart_campus.dto.UpdateResourceRequest;
 import com.sliit.paf.smart_campus.service.ResourceService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/resources")
+@Validated
 public class ResourceController {
 
-    @Autowired
-    private ResourceService resourceService;
+    private final ResourceService resourceService;
 
-    // GET /api/resources - Retrieve all resources
+    public ResourceController(ResourceService resourceService) {
+        this.resourceService = resourceService;
+    }
+
     @GetMapping
-    public ResponseEntity<List<Resource>> getAllResources() {
-        List<Resource> resources = resourceService.getAllResources();
-        return ResponseEntity.ok(resources);
+    public ResponseEntity<List<ResourceResponse>> getAllResources(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) @Min(value = 1, message = "minCapacity must be at least 1.") Integer minCapacity,
+            @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(resourceService.getAllResources(type, location, minCapacity, status));
     }
 
-    // GET /api/resources/{id} - Retrieve a single resource by ID
+    @GetMapping("/search")
+    public ResponseEntity<List<ResourceResponse>> searchResources(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) @Min(value = 1, message = "minCapacity must be at least 1.") Integer minCapacity,
+            @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(resourceService.getAllResources(type, location, minCapacity, status));
+    }
+
     @GetMapping("/{id}")
-    public ResponseEntity<Resource> getResourceById(@PathVariable Long id) {
-        return resourceService.getResourceById(id)
-                .map(resource -> ResponseEntity.ok(resource))
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<ResourceResponse> getResourceById(@PathVariable Long id) {
+        return ResponseEntity.ok(resourceService.getResourceById(id));
     }
 
-    // POST /api/resources - Create a new resource
     @PostMapping
-    public ResponseEntity<Resource> createResource(@RequestBody Resource resource) {
-        Resource createdResource = resourceService.addResource(resource);
+    public ResponseEntity<ResourceResponse> createResource(@Valid @RequestBody CreateResourceRequest resource) {
+        ResourceResponse createdResource = resourceService.createResource(resource);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdResource);
     }
 
-    // PUT /api/resources/{id} - Update an existing resource
     @PutMapping("/{id}")
-    public ResponseEntity<Resource> updateResource(@PathVariable Long id, @RequestBody Resource resourceDetails) {
-        try {
-            Resource updatedResource = resourceService.updateResource(id, resourceDetails);
-            return ResponseEntity.ok(updatedResource);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<ResourceResponse> updateResource(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateResourceRequest resourceDetails
+    ) {
+        return ResponseEntity.ok(resourceService.updateResource(id, resourceDetails));
     }
 
-    // DELETE /api/resources/{id} - Delete a resource
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteResource(@PathVariable Long id) {
-        try {
-            resourceService.deleteResource(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        resourceService.deleteResource(id);
+        return ResponseEntity.noContent().build();
     }
 }
