@@ -5,6 +5,7 @@ import com.sliit.paf.smart_campus.dto.UpdateResourceRequest;
 import com.sliit.paf.smart_campus.model.Resource;
 import com.sliit.paf.smart_campus.model.ResourceStatus;
 import com.sliit.paf.smart_campus.model.ResourceType;
+import com.sliit.paf.smart_campus.repository.BookingRepository;
 import com.sliit.paf.smart_campus.repository.ResourceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,10 +37,14 @@ class ResourceControllerIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
+    private BookingRepository bookingRepository;
+
+    @Autowired
     private ResourceRepository resourceRepository;
 
     @BeforeEach
     void setUp() {
+        bookingRepository.deleteAll();
         resourceRepository.deleteAll();
     }
 
