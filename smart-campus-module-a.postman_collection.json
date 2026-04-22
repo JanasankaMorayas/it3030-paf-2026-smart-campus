@@ -1,0 +1,153 @@
+{
+  "info": {
+    "_postman_id": "58b2d704-2e2c-45d6-b0f8-7f4fcb2d4f3b",
+    "name": "Smart Campus Module A",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "Get All Resources",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/resources",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "resources"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Search Resources",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/resources/search?type=LAB&location=Block%20A&minCapacity=40",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "resources",
+            "search"
+          ],
+          "query": [
+            {
+              "key": "type",
+              "value": "LAB"
+            },
+            {
+              "key": "location",
+              "value": "Block A"
+            },
+            {
+              "key": "minCapacity",
+              "value": "40"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Resource By Id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/resources/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "resources",
+            "1"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Resource",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"resourceCode\": \"LAB-001\",\n  \"name\": \"Advanced Networks Lab\",\n  \"description\": \"Lab with 40 workstations and projector support.\",\n  \"type\": \"LAB\",\n  \"capacity\": 40,\n  \"location\": \"Block A\",\n  \"availabilityStart\": \"2026-04-22T08:00:00\",\n  \"availabilityEnd\": \"2026-04-22T18:00:00\",\n  \"status\": \"ACTIVE\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/resources",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "resources"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Resource",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"resourceCode\": \"LAB-001\",\n  \"name\": \"Advanced Networks Lab - Updated\",\n  \"description\": \"Updated lab metadata.\",\n  \"type\": \"LAB\",\n  \"capacity\": 45,\n  \"location\": \"Block A\",\n  \"availabilityStart\": \"2026-04-22T08:00:00\",\n  \"availabilityEnd\": \"2026-04-22T18:00:00\",\n  \"status\": \"ACTIVE\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/resources/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "resources",
+            "1"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Resource",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/resources/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "resources",
+            "1"
+          ]
+        }
+      }
+    }
+  ]
+}
