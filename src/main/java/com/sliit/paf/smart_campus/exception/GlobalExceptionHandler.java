@@ -21,15 +21,20 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ResourceNotFoundException.class)
+    @ExceptionHandler({ResourceNotFoundException.class, BookingNotFoundException.class})
     public ResponseEntity<ApiErrorResponse> handleResourceNotFound(
-            ResourceNotFoundException exception,
+            RuntimeException exception,
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, Map.of());
     }
 
-    @ExceptionHandler({DuplicateResourceException.class, DataIntegrityViolationException.class})
+    @ExceptionHandler({
+            DuplicateResourceException.class,
+            BookingConflictException.class,
+            InvalidBookingStateException.class,
+            DataIntegrityViolationException.class
+    })
     public ResponseEntity<ApiErrorResponse> handleConflict(RuntimeException exception, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, Map.of());
     }

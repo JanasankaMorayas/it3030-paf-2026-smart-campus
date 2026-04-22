@@ -4,7 +4,10 @@ Smart Campus Operations Hub backend built with Spring Boot.
 
 ## Current scope
 
-This repository currently covers Module A resource catalogue APIs for managing campus facilities and assets.
+This repository currently covers:
+
+- Module A resource catalogue APIs for managing campus facilities and assets
+- Module B booking management APIs for creating, reviewing, filtering, and cancelling resource bookings
 
 Implemented in this sprint:
 
@@ -13,7 +16,10 @@ Implemented in this sprint:
 - filtering/search by `type`, `location`, `minCapacity`, and `status`
 - DTO-based controller responses
 - validation and JSON error handling
-- H2-backed automated tests for Module A
+- booking lifecycle with `PENDING`, `APPROVED`, `REJECTED`, and `CANCELLED`
+- booking overlap prevention for the same resource
+- booking filters by `resourceId`, `requesterId`, and `status`
+- H2-backed automated tests for Modules A and B
 
 ## Tech stack
 
@@ -25,7 +31,7 @@ Implemented in this sprint:
 
 ## Setup
 
-1. Create a MySQL database named `smart_campus_db`.
+1. Create a MySQL database named `smart_campus_db_v2`.
 2. Update the database credentials in [src/main/resources/application.properties](src/main/resources/application.properties) if needed.
 3. Start the API:
 
@@ -109,3 +115,50 @@ A ready-to-import Postman collection is available in:
 
 - `smart-campus-module-a.postman_collection.json`
 - `postman/collections/smart-campus-module-a.postman_collection.json`
+
+## Booking API
+
+| Method | URL | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/bookings` | Get all bookings with optional filters |
+| `GET` | `/api/bookings/{id}` | Get a single booking by id |
+| `POST` | `/api/bookings` | Create a new booking request |
+| `PUT` | `/api/bookings/{id}` | Update a pending booking |
+| `PATCH` | `/api/bookings/{id}/status` | Approve, reject, or cancel a booking |
+| `DELETE` | `/api/bookings/{id}` | Cancel an existing booking |
+
+### Booking filters
+
+- `resourceId`
+- `requesterId`
+- `status`
+
+Example:
+
+```http
+GET /api/bookings?resourceId=1&requesterId=student-1&status=PENDING
+```
+
+## Sample booking create request
+
+```json
+{
+  "resourceId": 1,
+  "requesterId": "student-1",
+  "purpose": "Database practical session",
+  "expectedAttendees": 30,
+  "startTime": "2026-04-25T09:00:00",
+  "endTime": "2026-04-25T11:00:00"
+}
+```
+
+## Booking rules
+
+- the referenced resource must exist
+- new and updated bookings cannot overlap for the same resource
+- only `PENDING` bookings can be edited
+- valid status transitions:
+  - `PENDING -> APPROVED`
+  - `PENDING -> REJECTED`
+  - `PENDING -> CANCELLED`
+  - `APPROVED -> CANCELLED`
