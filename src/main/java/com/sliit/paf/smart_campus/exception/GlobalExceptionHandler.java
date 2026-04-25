@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler({ResourceNotFoundException.class, BookingNotFoundException.class})
+    @ExceptionHandler({ResourceNotFoundException.class, BookingNotFoundException.class, TicketNotFoundException.class})
     public ResponseEntity<ApiErrorResponse> handleResourceNotFound(
             RuntimeException exception,
             HttpServletRequest request
@@ -33,10 +33,19 @@ public class GlobalExceptionHandler {
             DuplicateResourceException.class,
             BookingConflictException.class,
             InvalidBookingStateException.class,
+            InvalidTicketStateException.class,
             DataIntegrityViolationException.class
     })
     public ResponseEntity<ApiErrorResponse> handleConflict(RuntimeException exception, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(TooManyAttachmentsException.class)
+    public ResponseEntity<ApiErrorResponse> handleTooManyAttachments(
+            TooManyAttachmentsException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, Map.of());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
