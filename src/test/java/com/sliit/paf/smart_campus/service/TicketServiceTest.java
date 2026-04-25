@@ -34,6 +34,9 @@ class TicketServiceTest {
     @Mock
     private TicketRepository ticketRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private TicketService ticketService;
 
@@ -74,6 +77,7 @@ class TicketServiceTest {
         assertThat(capturedTicket.getImageUrl1()).isEqualTo("https://img.example.com/1.jpg");
         assertThat(response.getStatus()).isEqualTo(TicketStatus.OPEN);
         assertThat(response.getImageUrls()).containsExactly("https://img.example.com/1.jpg", "https://img.example.com/2.jpg");
+        verify(notificationService).notifyTicketCreated(savedTicket);
     }
 
     @Test
@@ -171,6 +175,7 @@ class TicketServiceTest {
 
         assertThat(ticket.getAssignedTechnician()).isEqualTo("tech-1");
         assertThat(response.getAssignedTechnician()).isEqualTo("tech-1");
+        verify(notificationService).notifyTicketAssigned(ticket);
     }
 
     @Test
@@ -192,5 +197,6 @@ class TicketServiceTest {
 
         assertThat(ticket.getStatus()).isEqualTo(TicketStatus.CANCELLED);
         verify(ticketRepository).save(ticket);
+        verify(notificationService).notifyTicketStatusChanged(ticket);
     }
 }

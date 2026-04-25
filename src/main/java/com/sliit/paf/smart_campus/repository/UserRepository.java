@@ -1,6 +1,7 @@
 package com.sliit.paf.smart_campus.repository;
 
 import com.sliit.paf.smart_campus.model.User;
+import com.sliit.paf.smart_campus.model.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -15,4 +16,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByProviderAndProviderId(String provider, String providerId);
 
     List<User> findAllByOrderByIdAsc();
+
+    List<User> findAllByRoleAndActiveTrueOrderByIdAsc(Role role);
 }

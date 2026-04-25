@@ -24,10 +24,12 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class TicketService {
 
+    private final NotificationService notificationService;
     private final TicketRepository ticketRepository;
 
-    public TicketService(TicketRepository ticketRepository) {
+    public TicketService(TicketRepository ticketRepository, NotificationService notificationService) {
         this.ticketRepository = ticketRepository;
+        this.notificationService = notificationService;
     }
 
     public List<TicketResponse> getAllTickets(
@@ -68,7 +70,9 @@ public class TicketService {
 
         applyImageUrls(ticket, imageUrls);
 
-        return TicketResponse.from(ticketRepository.save(ticket));
+        Ticket savedTicket = ticketRepository.save(ticket);
+        notificationService.notifyTicketCreated(savedTicket);
+        return TicketResponse.from(savedTicket);
     }
 
     @Transactional
@@ -103,7 +107,9 @@ public class TicketService {
             ticket.setResolutionNotes(resolutionNotes);
         }
 
-        return TicketResponse.from(ticketRepository.save(ticket));
+        Ticket savedTicket = ticketRepository.save(ticket);
+        notificationService.notifyTicketStatusChanged(savedTicket);
+        return TicketResponse.from(savedTicket);
     }
 
     @Transactional
@@ -116,7 +122,9 @@ public class TicketService {
 
         ticket.setAssignedTechnician(normalizeText(request.getAssignedTechnician()));
 
-        return TicketResponse.from(ticketRepository.save(ticket));
+        Ticket savedTicket = ticketRepository.save(ticket);
+        notificationService.notifyTicketAssigned(savedTicket);
+        return TicketResponse.from(savedTicket);
     }
 
     @Transactional
@@ -132,7 +140,8 @@ public class TicketService {
         }
 
         ticket.setStatus(TicketStatus.CANCELLED);
-        ticketRepository.save(ticket);
+        Ticket savedTicket = ticketRepository.save(ticket);
+        notificationService.notifyTicketStatusChanged(savedTicket != null ? savedTicket : ticket);
     }
 
     private Ticket findTicketById(Long id) {
