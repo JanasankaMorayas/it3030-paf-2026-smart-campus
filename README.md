@@ -8,6 +8,7 @@ This repository currently covers:
 
 - Module A resource catalogue APIs for managing campus facilities and assets
 - Module B booking management APIs for creating, reviewing, filtering, and cancelling resource bookings
+- Module C maintenance and incident ticketing APIs for campus issue reporting and technician handling
 
 Implemented in this sprint:
 
@@ -19,7 +20,10 @@ Implemented in this sprint:
 - booking lifecycle with `PENDING`, `APPROVED`, `REJECTED`, and `CANCELLED`
 - booking overlap prevention for the same resource
 - booking filters by `resourceId`, `requesterId`, and `status`
-- H2-backed automated tests for Modules A and B
+- ticket lifecycle with `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, and `CANCELLED`
+- ticket filters by `status`, `priority`, `category`, `reportedBy`, and `assignedTechnician`
+- technician assignment and resolution flow for maintenance incidents
+- H2-backed automated tests for Modules A, B, and C
 
 ## Tech stack
 
@@ -162,3 +166,62 @@ GET /api/bookings?resourceId=1&requesterId=student-1&status=PENDING
   - `PENDING -> REJECTED`
   - `PENDING -> CANCELLED`
   - `APPROVED -> CANCELLED`
+
+## Ticket API
+
+| Method | URL | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/tickets` | Get all tickets with optional filters |
+| `GET` | `/api/tickets/{id}` | Get a single ticket by id |
+| `POST` | `/api/tickets` | Create a new maintenance/incident ticket |
+| `PUT` | `/api/tickets/{id}` | Update an open or in-progress ticket |
+| `PATCH` | `/api/tickets/{id}/status` | Move a ticket through its workflow |
+| `PATCH` | `/api/tickets/{id}/assign` | Assign a technician to a ticket |
+| `DELETE` | `/api/tickets/{id}` | Cancel an open or in-progress ticket |
+
+### Ticket filters
+
+- `status`
+- `priority`
+- `category`
+- `reportedBy`
+- `assignedTechnician`
+
+Example:
+
+```http
+GET /api/tickets?status=IN_PROGRESS&priority=HIGH&category=NETWORK&reportedBy=student-1
+```
+
+## Sample ticket create request
+
+```json
+{
+  "title": "Water leak in Block A",
+  "description": "Water leaking near the entrance and making the floor slippery.",
+  "category": "PLUMBING",
+  "priority": "HIGH",
+  "location": "Block A Entrance",
+  "reportedBy": "staff-1",
+  "imageUrls": [
+    "https://img.example.com/leak-1.jpg",
+    "https://img.example.com/leak-2.jpg"
+  ]
+}
+```
+
+## Ticket rules
+
+- title, description, location, and reportedBy are required
+- a maximum of 3 image URLs is allowed
+- only `OPEN` or `IN_PROGRESS` tickets can be updated
+- only `OPEN` or `IN_PROGRESS` tickets can be assigned or cancelled
+- valid status transitions:
+  - `OPEN -> IN_PROGRESS`
+  - `OPEN -> RESOLVED`
+  - `OPEN -> CANCELLED`
+  - `IN_PROGRESS -> RESOLVED`
+  - `IN_PROGRESS -> CANCELLED`
+  - `RESOLVED -> CLOSED`
+  - `RESOLVED -> IN_PROGRESS`
+- resolution notes are required when resolving a ticket
