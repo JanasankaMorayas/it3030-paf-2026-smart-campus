@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
@@ -31,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "dev-user@smartcampus.local", roles = "USER")
 class TicketControllerIntegrationTest {
 
     @Autowired
@@ -209,6 +211,7 @@ class TicketControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
     void assignTechnician_shouldReturnUpdatedTicket() throws Exception {
         Ticket ticket = ticketRepository.save(Ticket.builder()
                 .title("Floor cleaning")
