@@ -10,6 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AppSecurityProperties {
 
     private DevUsersProperties devUsers = new DevUsersProperties();
+    private OAuth2Properties oauth2 = new OAuth2Properties();
 
     @Getter
     @Setter
@@ -42,5 +43,22 @@ public class AppSecurityProperties {
             this.displayName = displayName;
             this.password = password;
         }
+    }
+
+    @Getter
+    @Setter
+    public static class OAuth2Properties {
+        private String successRedirectUri = "/api/users/me";
+        private GoogleProperties google = new GoogleProperties();
+    }
+
+    @Getter
+    @Setter
+    public static class GoogleProperties {
+        private String clientId;
+        private String clientSecret;
+        private String clientName = "Google";
+        private String redirectUri = "{baseUrl}/login/oauth2/code/{registrationId}";
+        private String scope = "openid,profile,email";
     }
 }

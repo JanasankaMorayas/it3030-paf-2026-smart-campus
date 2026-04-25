@@ -1,11 +1,12 @@
 package com.sliit.paf.smart_campus.config;
 
 import com.sliit.paf.smart_campus.service.CustomOAuth2UserService;
+import com.sliit.paf.smart_campus.service.CustomOidcUserService;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -28,14 +29,16 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
-            CustomOAuth2UserService customOAuth2UserService
+            CustomOAuth2UserService customOAuth2UserService,
+            CustomOidcUserService customOidcUserService,
+            OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler
     ) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(Customizer.withDefaults())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/error", "/login/**", "/oauth2/**").permitAll()
+                        .requestMatchers("/error", "/login", "/login/**", "/oauth2/**", "/login/oauth2/**", "/oauth2/authorization/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/resources/**").permitAll()
                         .requestMatchers("/api/resources/**").hasRole("ADMIN")
                         .requestMatchers("/api/users/me").authenticated()
@@ -53,7 +56,11 @@ public class SecurityConfig {
 
         if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
             http.oauth2Login(oauth2 -> oauth2
-                    .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService)));
+                    .loginPage("/login")
+                    .userInfoEndpoint(userInfo -> userInfo
+                            .userService(customOAuth2UserService)
+                            .oidcUserService(customOidcUserService))
+                    .successHandler(oAuth2AuthenticationSuccessHandler));
         }
 
         return http.build();

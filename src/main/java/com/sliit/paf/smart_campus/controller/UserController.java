@@ -3,6 +3,7 @@ package com.sliit.paf.smart_campus.controller;
 import com.sliit.paf.smart_campus.dto.AuthUserResponse;
 import com.sliit.paf.smart_campus.dto.UpdateUserRoleRequest;
 import com.sliit.paf.smart_campus.dto.UserResponse;
+import com.sliit.paf.smart_campus.service.AuthenticatedUserService;
 import com.sliit.paf.smart_campus.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -20,15 +21,17 @@ import java.util.List;
 @RequestMapping("/api/users")
 public class UserController {
 
+    private final AuthenticatedUserService authenticatedUserService;
     private final UserService userService;
 
-    public UserController(UserService userService) {
+    public UserController(AuthenticatedUserService authenticatedUserService, UserService userService) {
+        this.authenticatedUserService = authenticatedUserService;
         this.userService = userService;
     }
 
     @GetMapping("/me")
     public ResponseEntity<AuthUserResponse> getCurrentUser(Authentication authentication) {
-        return ResponseEntity.ok(userService.getCurrentUser(authentication.getName()));
+        return ResponseEntity.ok(AuthUserResponse.from(authenticatedUserService.getCurrentUser(authentication)));
     }
 
     @GetMapping
