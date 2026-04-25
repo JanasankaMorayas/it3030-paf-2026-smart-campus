@@ -67,7 +67,8 @@ public class UserService {
         String normalizedProvider = provider.trim().toUpperCase(Locale.ROOT);
         String normalizedProviderId = providerId.trim();
 
-        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+        User user = userRepository.findByProviderAndProviderId(normalizedProvider, normalizedProviderId)
+                .or(() -> userRepository.findByEmailIgnoreCase(normalizedEmail))
                 .orElseGet(() -> User.builder()
                         .email(normalizedEmail)
                         .role(defaultRole)

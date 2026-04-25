@@ -25,7 +25,7 @@ Implemented in this sprint:
 - ticket filters by `status`, `priority`, `category`, `reportedBy`, and `assignedTechnician`
 - technician assignment and resolution flow for maintenance incidents
 - persisted user model with `USER` and `ADMIN` roles
-- local development basic-auth users plus OAuth2-ready security configuration
+- local development basic-auth users plus Google OAuth2 login support through external configuration
 - admin role management endpoints and current-user endpoint
 - H2-backed automated tests for Modules A, B, C, and E foundation
 
@@ -65,13 +65,13 @@ PowerShell command:
 .\mvnw test
 ```
 
-## Temporary security note
+## Auth and security
 
-Module E groundwork is now added, but full Google OAuth login is not complete yet. Current backend security supports:
+Module E now supports both local development auth and Google OAuth2 login when credentials are supplied externally. Current backend security supports:
 
 - local development basic-auth users for protected endpoints
 - a persisted user model with `USER` and `ADMIN` roles
-- an OAuth2-ready structure so Google login can be wired later through configuration
+- Google OAuth2 login with local user sync when Google client credentials are configured
 
 Current route strategy:
 
@@ -81,7 +81,88 @@ Current route strategy:
 - booking status updates and technician assignment have admin protection
 - user management endpoints are protected, with admin-only access where appropriate
 
-Real Google OAuth client credentials must be supplied later through external configuration.
+### Google OAuth2 configuration
+
+The app now reads Google OAuth2 settings from `app.security.oauth2.google.*`, with environment-variable-friendly defaults already wired in [src/main/resources/application.properties](src/main/resources/application.properties).
+
+Required values:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+
+Mapped app properties:
+
+- `app.security.oauth2.google.client-id=${GOOGLE_CLIENT_ID:}`
+- `app.security.oauth2.google.client-secret=${GOOGLE_CLIENT_SECRET:}`
+- `app.security.oauth2.google.scope=openid,profile,email`
+- `app.security.oauth2.google.redirect-uri={baseUrl}/login/oauth2/code/{registrationId}`
+- `app.security.oauth2.google.client-name=Google`
+
+Optional app-level setting:
+
+- `app.security.oauth2.success-redirect-uri=/api/users/me`
+
+PowerShell example:
+
+```powershell
+$env:GOOGLE_CLIENT_ID="your-google-client-id"
+$env:GOOGLE_CLIENT_SECRET="your-google-client-secret"
+.\mvnw spring-boot:run
+```
+
+After startup, open this URL in a browser to begin login:
+
+```text
+http://localhost:8080/oauth2/authorization/google
+```
+
+You can also open:
+
+```text
+http://localhost:8080/login
+```
+
+to use Spring Security's generated OAuth login page when Google client registration is present.
+
+On successful login, Spring Security redirects to `/api/users/me`, and the Google user is created or updated in the local `users` table with a safe default role of `USER`.
+
+If Google credentials are not configured, local basic auth still works for protected endpoints during development.
+
+### Google Cloud Console setup
+
+1. Open Google Cloud Console.
+2. Create or select the project you want to use for this app.
+3. Go to `APIs & Services` -> `OAuth consent screen`.
+4. Configure the consent screen first.
+5. Choose `External` for normal student/local testing unless you specifically need internal organization-only access.
+6. Fill the required app details:
+   - App name
+   - User support email
+   - Developer contact email
+7. Add your Google account under test users if the app is still in testing mode.
+8. Then go to `APIs & Services` -> `Credentials`.
+9. Click `Create Credentials` -> `OAuth client ID`.
+10. Choose application type `Web application`.
+11. Give it a name like `Smart Campus Local`.
+12. Under `Authorized redirect URIs`, add this exact value:
+
+```text
+http://localhost:8080/login/oauth2/code/google
+```
+
+13. Save the client and copy:
+   - Client ID
+   - Client secret
+14. Set them in your shell as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+### How to diagnose common Google OAuth browser errors
+
+- `invalid_client`
+  Usually means the client ID is wrong, the client secret is wrong, the OAuth client was deleted, or the credentials come from a different Google Cloud project/client than the one you expect.
+- `redirect_uri_mismatch`
+  Means Google Cloud Console does not contain `http://localhost:8080/login/oauth2/code/google` exactly as an authorized redirect URI.
+- consent screen or access blocked errors
+  Usually means the OAuth consent screen is incomplete, publishing status is limited, or your Google account is not added as a test user.
 
 ## Resource API
 
@@ -256,11 +337,14 @@ Local development users from [src/main/resources/application.properties](src/mai
 - `dev-user@smartcampus.local` / `dev-user-pass`
 - `dev-admin@smartcampus.local` / `dev-admin-pass`
 
-OAuth2 placeholders are also prepared in configuration comments for future Google setup:
+Google OAuth2 configuration keys supported by the app:
 
-- `spring.security.oauth2.client.registration.google.client-id`
-- `spring.security.oauth2.client.registration.google.client-secret`
-- `spring.security.oauth2.client.registration.google.scope`
+- `app.security.oauth2.google.client-id`
+- `app.security.oauth2.google.client-secret`
+- `app.security.oauth2.google.scope`
+- `app.security.oauth2.google.redirect-uri`
+- `app.security.oauth2.google.client-name`
+- `app.security.oauth2.success-redirect-uri`
 
 ## User API
 
@@ -270,6 +354,29 @@ OAuth2 placeholders are also prepared in configuration comments for future Googl
 | `GET` | `/api/users` | Get all users (`ADMIN` only) |
 | `PATCH` | `/api/users/{id}/role` | Update a user role (`ADMIN` only) |
 
+## Public vs protected endpoints
+
+Public:
+
+- `GET /api/resources`
+- `GET /api/resources/search`
+- `GET /api/resources/{id}`
+- `/oauth2/authorization/google` once Google OAuth2 credentials are configured
+
+Authenticated:
+
+- all booking APIs
+- all ticket APIs
+- `GET /api/users/me`
+
+Admin only:
+
+- resource create, update, delete APIs
+- `PATCH /api/bookings/{id}/status`
+- `PATCH /api/tickets/{id}/assign`
+- `GET /api/users`
+- `PATCH /api/users/{id}/role`
+
 ## Sample role update request
 
 ```json
@@ -277,3 +384,9 @@ OAuth2 placeholders are also prepared in configuration comments for future Googl
   "role": "ADMIN"
 }
 ```
+
+## Remaining auth work
+
+- browser-based OAuth login can be tested manually once real Google credentials are added
+- stricter ownership enforcement for bookings and tickets can now be built on top of the authenticated user identity
+- Module D notifications are still not implemented
