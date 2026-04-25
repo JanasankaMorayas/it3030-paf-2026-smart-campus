@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
@@ -49,6 +50,7 @@ class ResourceControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
     void createResource_shouldReturnCreatedWhenRequestIsValid() throws Exception {
         CreateResourceRequest request = CreateResourceRequest.builder()
                 .resourceCode("LAB-201")
@@ -118,6 +120,7 @@ class ResourceControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
     void createResource_shouldReturnBadRequestWhenValidationFails() throws Exception {
         CreateResourceRequest request = CreateResourceRequest.builder()
                 .resourceCode("")
@@ -139,6 +142,7 @@ class ResourceControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
     void createResource_shouldReturnBadRequestWhenEnumOrAvailabilityRangeIsInvalid() throws Exception {
         CreateResourceRequest request = CreateResourceRequest.builder()
                 .resourceCode("LAB-999")
@@ -161,6 +165,7 @@ class ResourceControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
     void createResource_shouldReturnConflictWhenResourceCodeAlreadyExists() throws Exception {
         resourceRepository.save(Resource.builder()
                 .resourceCode("LAB-201")
@@ -256,6 +261,7 @@ class ResourceControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
     void updateResource_shouldReturnUpdatedResource() throws Exception {
         Resource savedResource = resourceRepository.save(Resource.builder()
                 .resourceCode("ROOM-201")
@@ -289,6 +295,7 @@ class ResourceControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
     void deleteResource_shouldReturnNoContent() throws Exception {
         Resource savedResource = resourceRepository.save(Resource.builder()
                 .resourceCode("EQ-999")

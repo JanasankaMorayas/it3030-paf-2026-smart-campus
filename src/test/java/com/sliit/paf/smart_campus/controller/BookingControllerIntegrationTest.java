@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
@@ -32,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "dev-user@smartcampus.local", roles = "USER")
 class BookingControllerIntegrationTest {
 
     @Autowired
@@ -186,6 +188,7 @@ class BookingControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
     void updateBookingStatus_shouldApproveBooking() throws Exception {
         Resource resource = saveResource("LAB-105", "Approval Lab");
         Booking booking = bookingRepository.save(Booking.builder()
@@ -253,6 +256,7 @@ class BookingControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
     void updateBookingStatus_shouldReturnBadRequestWhenStatusIsInvalid() throws Exception {
         Resource resource = saveResource("LAB-107", "Status Lab");
         Booking booking = bookingRepository.save(Booking.builder()

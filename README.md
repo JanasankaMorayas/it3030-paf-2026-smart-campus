@@ -9,6 +9,7 @@ This repository currently covers:
 - Module A resource catalogue APIs for managing campus facilities and assets
 - Module B booking management APIs for creating, reviewing, filtering, and cancelling resource bookings
 - Module C maintenance and incident ticketing APIs for campus issue reporting and technician handling
+- Module E authentication and role-management groundwork for future OAuth2 and RBAC enforcement
 
 Implemented in this sprint:
 
@@ -23,7 +24,10 @@ Implemented in this sprint:
 - ticket lifecycle with `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, and `CANCELLED`
 - ticket filters by `status`, `priority`, `category`, `reportedBy`, and `assignedTechnician`
 - technician assignment and resolution flow for maintenance incidents
-- H2-backed automated tests for Modules A, B, and C
+- persisted user model with `USER` and `ADMIN` roles
+- local development basic-auth users plus OAuth2-ready security configuration
+- admin role management endpoints and current-user endpoint
+- H2-backed automated tests for Modules A, B, C, and E foundation
 
 ## Tech stack
 
@@ -63,7 +67,21 @@ PowerShell command:
 
 ## Temporary security note
 
-Module E OAuth and role-based access control are not implemented yet. For local Module A API testing, the current security config temporarily allows `/api/**` and `/error` only. This must be replaced with proper OAuth/RBAC during Module E.
+Module E groundwork is now added, but full Google OAuth login is not complete yet. Current backend security supports:
+
+- local development basic-auth users for protected endpoints
+- a persisted user model with `USER` and `ADMIN` roles
+- an OAuth2-ready structure so Google login can be wired later through configuration
+
+Current route strategy:
+
+- `GET /api/resources/**` is public
+- resource write endpoints require `ADMIN`
+- booking and ticket APIs require authentication
+- booking status updates and technician assignment have admin protection
+- user management endpoints are protected, with admin-only access where appropriate
+
+Real Google OAuth client credentials must be supplied later through external configuration.
 
 ## Resource API
 
@@ -222,6 +240,40 @@ GET /api/tickets?status=IN_PROGRESS&priority=HIGH&category=NETWORK&reportedBy=st
   - `OPEN -> CANCELLED`
   - `IN_PROGRESS -> RESOLVED`
   - `IN_PROGRESS -> CANCELLED`
-  - `RESOLVED -> CLOSED`
-  - `RESOLVED -> IN_PROGRESS`
+- `RESOLVED -> CLOSED`
+- `RESOLVED -> IN_PROGRESS`
 - resolution notes are required when resolving a ticket
+
+## Auth And Role Model
+
+Role model:
+
+- `USER`
+- `ADMIN`
+
+Local development users from [src/main/resources/application.properties](src/main/resources/application.properties):
+
+- `dev-user@smartcampus.local` / `dev-user-pass`
+- `dev-admin@smartcampus.local` / `dev-admin-pass`
+
+OAuth2 placeholders are also prepared in configuration comments for future Google setup:
+
+- `spring.security.oauth2.client.registration.google.client-id`
+- `spring.security.oauth2.client.registration.google.client-secret`
+- `spring.security.oauth2.client.registration.google.scope`
+
+## User API
+
+| Method | URL | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/users/me` | Get the currently authenticated user |
+| `GET` | `/api/users` | Get all users (`ADMIN` only) |
+| `PATCH` | `/api/users/{id}/role` | Update a user role (`ADMIN` only) |
+
+## Sample role update request
+
+```json
+{
+  "role": "ADMIN"
+}
+```
