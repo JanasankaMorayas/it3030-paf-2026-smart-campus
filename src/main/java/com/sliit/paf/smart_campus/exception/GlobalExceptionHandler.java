@@ -21,7 +21,13 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler({ResourceNotFoundException.class, BookingNotFoundException.class, TicketNotFoundException.class, UserNotFoundException.class})
+    @ExceptionHandler({
+            ResourceNotFoundException.class,
+            BookingNotFoundException.class,
+            TicketNotFoundException.class,
+            UserNotFoundException.class,
+            NotificationNotFoundException.class
+    })
     public ResponseEntity<ApiErrorResponse> handleResourceNotFound(
             RuntimeException exception,
             HttpServletRequest request

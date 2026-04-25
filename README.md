@@ -9,6 +9,7 @@ This repository currently covers:
 - Module A resource catalogue APIs for managing campus facilities and assets
 - Module B booking management APIs for creating, reviewing, filtering, and cancelling resource bookings
 - Module C maintenance and incident ticketing APIs for campus issue reporting and technician handling
+- Module D notification APIs for booking and ticket event alerts
 - Module E authentication and role-management groundwork for future OAuth2 and RBAC enforcement
 
 Implemented in this sprint:
@@ -24,10 +25,12 @@ Implemented in this sprint:
 - ticket lifecycle with `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, and `CANCELLED`
 - ticket filters by `status`, `priority`, `category`, `reportedBy`, and `assignedTechnician`
 - technician assignment and resolution flow for maintenance incidents
+- notification inbox APIs with read, unread, read-all, and delete flows
+- booking and ticket event-driven notifications
 - persisted user model with `USER` and `ADMIN` roles
 - local development basic-auth users plus Google OAuth2 login support through external configuration
 - admin role management endpoints and current-user endpoint
-- H2-backed automated tests for Modules A, B, C, and E foundation
+- H2-backed automated tests for Modules A, B, C, D, and E foundation
 
 ## Tech stack
 
@@ -78,6 +81,7 @@ Current route strategy:
 - `GET /api/resources/**` is public
 - resource write endpoints require `ADMIN`
 - booking and ticket APIs require authentication
+- notification APIs require authentication
 - booking status updates and technician assignment have admin protection
 - user management endpoints are protected, with admin-only access where appropriate
 
@@ -354,6 +358,52 @@ Google OAuth2 configuration keys supported by the app:
 | `GET` | `/api/users` | Get all users (`ADMIN` only) |
 | `PATCH` | `/api/users/{id}/role` | Update a user role (`ADMIN` only) |
 
+## Notification API
+
+| Method | URL | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/notifications` | Get the current user's notifications with optional filters |
+| `GET` | `/api/notifications/unread` | Get unread notifications for the current user |
+| `PATCH` | `/api/notifications/{id}/read` | Mark one notification as read |
+| `PATCH` | `/api/notifications/read-all` | Mark all current-user notifications as read |
+| `DELETE` | `/api/notifications/{id}` | Delete one notification |
+
+### Notification filters
+
+- `unreadOnly`
+- `type`
+
+Example:
+
+```http
+GET /api/notifications?unreadOnly=true&type=BOOKING_APPROVED
+```
+
+## Notification triggers
+
+Current backend notification events:
+
+- booking created
+- booking approved
+- booking rejected
+- booking cancelled
+- ticket created
+- technician assigned to a ticket
+- ticket status updated
+- ticket resolved
+
+The notification type enum currently includes:
+
+- `BOOKING_CREATED`
+- `BOOKING_APPROVED`
+- `BOOKING_REJECTED`
+- `BOOKING_CANCELLED`
+- `TICKET_CREATED`
+- `TICKET_ASSIGNED`
+- `TICKET_STATUS_UPDATED`
+- `TICKET_RESOLVED`
+- `GENERAL`
+
 ## Public vs protected endpoints
 
 Public:
@@ -367,6 +417,7 @@ Authenticated:
 
 - all booking APIs
 - all ticket APIs
+- all notification APIs
 - `GET /api/users/me`
 
 Admin only:
@@ -389,4 +440,9 @@ Admin only:
 
 - browser-based OAuth login can be tested manually once real Google credentials are added
 - stricter ownership enforcement for bookings and tickets can now be built on top of the authenticated user identity
-- Module D notifications are still not implemented
+
+## Notification limitations
+
+- notifications are currently linked using the best available identifier strategy from existing modules
+- bookings and tickets still store requester/reporter identifiers as strings, so perfect ownership mapping is not fully enforced yet
+- if a booking requester or ticket reporter is not using the same identifier as the authenticated email, that notification may not appear in the authenticated inbox until ownership rules are tightened further

@@ -3,6 +3,7 @@ package com.sliit.paf.smart_campus.controller;
 import com.sliit.paf.smart_campus.dto.UpdateUserRoleRequest;
 import com.sliit.paf.smart_campus.model.Role;
 import com.sliit.paf.smart_campus.model.User;
+import com.sliit.paf.smart_campus.repository.NotificationRepository;
 import com.sliit.paf.smart_campus.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,8 +37,12 @@ class UserControllerIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private NotificationRepository notificationRepository;
+
     @BeforeEach
     void setUp() {
+        notificationRepository.deleteAll();
         userRepository.deleteAll();
     }
 

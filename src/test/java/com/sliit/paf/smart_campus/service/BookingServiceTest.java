@@ -42,6 +42,9 @@ class BookingServiceTest {
     @Mock
     private ResourceRepository resourceRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private BookingService bookingService;
 
@@ -84,6 +87,7 @@ class BookingServiceTest {
         assertThat(capturedBooking.getPurpose()).isEqualTo("Database practical");
         assertThat(response.getId()).isEqualTo(10L);
         assertThat(response.getResourceCode()).isEqualTo("LAB-001");
+        verify(notificationService).notifyBookingCreated(savedBooking);
     }
 
     @Test
@@ -169,6 +173,7 @@ class BookingServiceTest {
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.APPROVED);
         assertThat(booking.getAdminDecisionReason()).isEqualTo("Approved for scheduled workshop.");
         assertThat(response.getStatus()).isEqualTo(BookingStatus.APPROVED);
+        verify(notificationService).notifyBookingStatusChanged(booking);
     }
 
     @Test
@@ -193,6 +198,7 @@ class BookingServiceTest {
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         assertThat(booking.getAdminDecisionReason()).isNull();
         verify(bookingRepository).save(booking);
+        verify(notificationService).notifyBookingStatusChanged(booking);
     }
 
     private Resource buildResource(Long id, String resourceCode, String name) {

@@ -30,11 +30,17 @@ public class BookingService {
     private static final Set<BookingStatus> BLOCKING_STATUSES = EnumSet.of(BookingStatus.PENDING, BookingStatus.APPROVED);
 
     private final BookingRepository bookingRepository;
+    private final NotificationService notificationService;
     private final ResourceRepository resourceRepository;
 
-    public BookingService(BookingRepository bookingRepository, ResourceRepository resourceRepository) {
+    public BookingService(
+            BookingRepository bookingRepository,
+            ResourceRepository resourceRepository,
+            NotificationService notificationService
+    ) {
         this.bookingRepository = bookingRepository;
         this.resourceRepository = resourceRepository;
+        this.notificationService = notificationService;
     }
 
     public List<BookingResponse> getAllBookings(Long resourceId, String requesterId, String status) {
@@ -66,7 +72,9 @@ public class BookingService {
                 .status(BookingStatus.PENDING)
                 .build();
 
-        return BookingResponse.from(bookingRepository.save(booking));
+        Booking savedBooking = bookingRepository.save(booking);
+        notificationService.notifyBookingCreated(savedBooking);
+        return BookingResponse.from(savedBooking);
     }
 
     @Transactional
@@ -105,7 +113,9 @@ public class BookingService {
         booking.setStatus(targetStatus);
         booking.setAdminDecisionReason(normalizeNullableText(request.getAdminDecisionReason()));
 
-        return BookingResponse.from(bookingRepository.save(booking));
+        Booking savedBooking = bookingRepository.save(booking);
+        notificationService.notifyBookingStatusChanged(savedBooking);
+        return BookingResponse.from(savedBooking);
     }
 
     @Transactional
@@ -119,7 +129,8 @@ public class BookingService {
         validateStatusTransition(booking.getStatus(), BookingStatus.CANCELLED);
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setAdminDecisionReason(null);
-        bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        notificationService.notifyBookingStatusChanged(savedBooking != null ? savedBooking : booking);
     }
 
     private Booking findBookingById(Long id) {

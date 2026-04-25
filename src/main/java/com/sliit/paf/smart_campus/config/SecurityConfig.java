@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/error", "/login", "/login/**", "/oauth2/**", "/login/oauth2/**", "/oauth2/authorization/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/resources/**").permitAll()
                         .requestMatchers("/api/resources/**").hasRole("ADMIN")
+                        .requestMatchers("/api/notifications/**").authenticated()
                         .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/bookings/*/status").hasRole("ADMIN")
