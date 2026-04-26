@@ -84,7 +84,19 @@ async function request(path, options = {}) {
     fetchOptions.body = JSON.stringify(body);
   }
 
-  const response = await fetch(buildUrl(path, params), fetchOptions);
+  let response;
+
+  try {
+    response = await fetch(buildUrl(path, params), fetchOptions);
+  } catch (error) {
+    throw {
+      status: 0,
+      error: "Network Error",
+      message: `Could not reach the backend at ${API_BASE_URL}. Make sure the Spring Boot app is running on http://localhost:8080 and that CORS allows ${window.location.origin}.`,
+      validationErrors: {},
+    };
+  }
+
   const payload = await parseResponse(response);
 
   if (!response.ok) {
