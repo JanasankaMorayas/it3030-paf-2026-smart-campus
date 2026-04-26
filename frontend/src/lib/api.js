@@ -1,4 +1,14 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+function resolveDefaultApiBaseUrl() {
+  if (typeof window === "undefined") {
+    return "http://localhost:8080";
+  }
+
+  return window.location.hostname === "127.0.0.1"
+    ? "http://127.0.0.1:8080"
+    : "http://localhost:8080";
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || resolveDefaultApiBaseUrl();
 const BASIC_AUTH_STORAGE_KEY = "smart-campus-basic-auth";
 
 function encodeBasicAuth({ username, password }) {
@@ -129,7 +139,7 @@ const authApi = {
   },
 
   getGoogleLoginUrl() {
-    return `${API_BASE_URL}/oauth2/authorization/google`;
+    return buildUrl("/login", { redirect_uri: `${window.location.origin}/` });
   },
 
   getApiBaseUrl() {

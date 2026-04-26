@@ -21,6 +21,7 @@ React + Vite frontend client for the Smart Campus Operations Hub backend.
 
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
+- optional fallback redirect: `FRONTEND_BASE_URL`
 
 Otherwise, the local Basic Auth demo users are enough for manual demos.
 
@@ -33,10 +34,24 @@ npm install
 npm run dev:5173
 ```
 
+Recommended Google OAuth demo flow:
+
+- run the frontend on `http://127.0.0.1:5173`
+- open the login page and click `Continue with Google`
+- finish Google sign-in
+- expect the browser to return to the React dashboard automatically
+
 If port `5173` is busy, use:
 
 ```powershell
 npm run dev:5174
+```
+
+If you start the frontend on another local origin and want a fixed backend fallback redirect, start the backend with:
+
+```powershell
+$env:FRONTEND_BASE_URL="http://127.0.0.1:5174/"
+.\mvnw spring-boot:run
 ```
 
 If you prefer the generic Vite command:
@@ -55,6 +70,12 @@ Optional API base URL override:
 
 ```powershell
 $env:VITE_API_BASE_URL="http://localhost:8080"
+```
+
+If you run the frontend on `127.0.0.1`, you can also use:
+
+```powershell
+$env:VITE_API_BASE_URL="http://127.0.0.1:8080"
 ```
 
 ## Demo login credentials
@@ -76,7 +97,9 @@ $env:VITE_API_BASE_URL="http://localhost:8080"
 
 ## Notes
 
-- Google login opens the backend OAuth flow in a browser tab and the frontend can then refresh the backend session.
+- Google login now starts through the backend `/login` endpoint and stores the current frontend origin for the OAuth success redirect.
+- After successful Google sign-in, the browser should return to the React dashboard automatically instead of stopping on raw `/api/users/me` JSON.
+- If you trigger OAuth directly from a backend URL instead of the frontend login page, the backend falls back to `FRONTEND_BASE_URL` or `http://127.0.0.1:5173/`.
 - Basic Auth mode is the fastest way to demo the full assignment workflow across all modules.
 - The frontend expects the backend paged response format used by bookings, tickets, notifications, and audit logs.
 - Local backend CORS is configured for:
@@ -84,6 +107,9 @@ $env:VITE_API_BASE_URL="http://localhost:8080"
   - `http://127.0.0.1:5173`
   - `http://localhost:5174`
   - `http://127.0.0.1:5174`
+- For Google Cloud Console redirect URIs, add both if you use both hostnames:
+  - `http://localhost:8080/login/oauth2/code/google`
+  - `http://127.0.0.1:8080/login/oauth2/code/google`
 - Backend start command from repo root:
 
 ```powershell
