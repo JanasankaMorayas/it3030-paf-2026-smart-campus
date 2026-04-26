@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,6 +23,9 @@ class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private UserService userService;
@@ -80,5 +84,38 @@ class UserServiceTest {
         assertThat(updatedUser.getProviderId()).isEqualTo("google-sub-999");
         assertThat(updatedUser.getRole()).isEqualTo(Role.ADMIN);
         assertThat(updatedUser.getActive()).isTrue();
+    }
+
+    @Test
+    void updateUserRole_shouldAuditRoleChange() {
+        User targetUser = User.builder()
+                .id(11L)
+                .email("member@example.com")
+                .displayName("Member")
+                .provider("LOCAL_DEV")
+                .providerId("member@example.com")
+                .role(Role.USER)
+                .active(true)
+                .build();
+
+        User adminUser = User.builder()
+                .id(1L)
+                .email("admin@example.com")
+                .displayName("Admin")
+                .provider("LOCAL_DEV")
+                .providerId("admin@example.com")
+                .role(Role.ADMIN)
+                .active(true)
+                .build();
+
+        when(userRepository.findById(11L)).thenReturn(Optional.of(targetUser));
+        when(userRepository.save(targetUser)).thenReturn(targetUser);
+
+        userService.updateUserRole(11L, com.sliit.paf.smart_campus.dto.UpdateUserRoleRequest.builder()
+                .role("TECHNICIAN")
+                .build(), adminUser);
+
+        assertThat(targetUser.getRole()).isEqualTo(Role.TECHNICIAN);
+        verify(auditLogService).recordEvent(eq("USER"), eq(11L), eq("ROLE_CHANGED"), eq(adminUser), eq("admin@example.com"), any());
     }
 }

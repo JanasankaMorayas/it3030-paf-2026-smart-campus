@@ -19,10 +19,12 @@ public class UserService {
 
     private static final String LOCAL_DEV_PROVIDER = "LOCAL_DEV";
 
+    private final AuditLogService auditLogService;
     private final UserRepository userRepository;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, AuditLogService auditLogService) {
         this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
     }
 
     public AuthUserResponse getCurrentUser(String email) {
@@ -36,10 +38,24 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse updateUserRole(Long id, UpdateUserRoleRequest request) {
+    public UserResponse updateUserRole(Long id, UpdateUserRoleRequest request, User performedByUser) {
         User user = findUserById(id);
-        user.setRole(Role.from(request.getRole()));
-        return UserResponse.from(userRepository.save(user));
+        Role previousRole = user.getRole();
+        Role updatedRole = Role.from(request.getRole());
+
+        user.setRole(updatedRole);
+        User savedUser = userRepository.save(user);
+
+        auditLogService.recordEvent(
+                "USER",
+                savedUser.getId(),
+                "ROLE_CHANGED",
+                performedByUser,
+                performedByUser != null ? performedByUser.getEmail() : null,
+                "Role changed from " + previousRole + " to " + updatedRole + " for user " + savedUser.getEmail() + "."
+        );
+
+        return UserResponse.from(savedUser);
     }
 
     @Transactional

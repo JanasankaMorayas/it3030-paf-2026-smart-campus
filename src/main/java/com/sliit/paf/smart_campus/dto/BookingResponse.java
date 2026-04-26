@@ -21,6 +21,9 @@ public class BookingResponse {
     private Long resourceId;
     private String resourceCode;
     private String resourceName;
+    private Long ownerUserId;
+    private String ownerEmail;
+    private String ownerDisplayName;
     private String requesterId;
     private String purpose;
     private Integer expectedAttendees;
@@ -37,7 +40,10 @@ public class BookingResponse {
                 .resourceId(booking.getResource().getId())
                 .resourceCode(booking.getResource().getResourceCode())
                 .resourceName(booking.getResource().getName())
-                .requesterId(booking.getRequesterId())
+                .ownerUserId(booking.getOwnerUser() != null ? booking.getOwnerUser().getId() : null)
+                .ownerEmail(booking.getOwnerUser() != null ? booking.getOwnerUser().getEmail() : booking.getRequesterId())
+                .ownerDisplayName(booking.getOwnerUser() != null ? booking.getOwnerUser().getDisplayName() : null)
+                .requesterId(booking.getOwnerUser() != null ? booking.getOwnerUser().getEmail() : booking.getRequesterId())
                 .purpose(booking.getPurpose())
                 .expectedAttendees(booking.getExpectedAttendees())
                 .startTime(booking.getStartTime())

@@ -1,10 +1,12 @@
 package com.sliit.paf.smart_campus.service;
 
 import com.sliit.paf.smart_campus.exception.UserNotFoundException;
+import com.sliit.paf.smart_campus.model.Role;
 import com.sliit.paf.smart_campus.model.User;
 import com.sliit.paf.smart_campus.repository.UserRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
@@ -33,6 +35,16 @@ public class AuthenticatedUserService {
         String email = getCurrentUserEmail(authentication);
         return userRepository.findByEmailIgnoreCase(email)
                 .orElseGet(() -> syncAuthenticatedOAuthUser(authentication, email));
+    }
+
+    public boolean isAdmin(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority -> authority.equals("ROLE_" + Role.ADMIN.name()));
     }
 
     private String extractEmail(Authentication authentication) {

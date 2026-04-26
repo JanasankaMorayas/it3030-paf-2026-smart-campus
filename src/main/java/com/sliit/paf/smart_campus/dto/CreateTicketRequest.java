@@ -47,7 +47,6 @@ public class CreateTicketRequest {
     @Size(max = 255, message = "Location must not exceed 255 characters.")
     private String location;
 
-    @NotBlank(message = "Reported by is required.")
     @Size(max = 100, message = "Reported by must not exceed 100 characters.")
     private String reportedBy;
 

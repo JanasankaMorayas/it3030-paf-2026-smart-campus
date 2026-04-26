@@ -26,6 +26,11 @@ public class AppSecurityProperties {
                 "Development User",
                 "dev-user-pass"
         );
+        private DevUserProperties technician = new DevUserProperties(
+                "dev-tech@smartcampus.local",
+                "Development Technician",
+                "dev-tech-pass"
+        );
     }
 
     @Getter

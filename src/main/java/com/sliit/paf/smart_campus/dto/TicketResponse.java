@@ -28,7 +28,13 @@ public class TicketResponse {
     private TicketPriority priority;
     private TicketStatus status;
     private String location;
+    private Long reportedByUserId;
+    private String reporterEmail;
+    private String reporterDisplayName;
     private String reportedBy;
+    private Long assignedTechnicianUserId;
+    private String technicianEmail;
+    private String technicianDisplayName;
     private String assignedTechnician;
     private String resolutionNotes;
     private List<String> imageUrls;
@@ -44,8 +50,14 @@ public class TicketResponse {
                 .priority(ticket.getPriority())
                 .status(ticket.getStatus())
                 .location(ticket.getLocation())
-                .reportedBy(ticket.getReportedBy())
-                .assignedTechnician(ticket.getAssignedTechnician())
+                .reportedByUserId(ticket.getReportedByUser() != null ? ticket.getReportedByUser().getId() : null)
+                .reporterEmail(ticket.getReportedByUser() != null ? ticket.getReportedByUser().getEmail() : ticket.getReportedBy())
+                .reporterDisplayName(ticket.getReportedByUser() != null ? ticket.getReportedByUser().getDisplayName() : null)
+                .reportedBy(ticket.getReportedByUser() != null ? ticket.getReportedByUser().getEmail() : ticket.getReportedBy())
+                .assignedTechnicianUserId(ticket.getAssignedTechnicianUser() != null ? ticket.getAssignedTechnicianUser().getId() : null)
+                .technicianEmail(ticket.getAssignedTechnicianUser() != null ? ticket.getAssignedTechnicianUser().getEmail() : ticket.getAssignedTechnician())
+                .technicianDisplayName(ticket.getAssignedTechnicianUser() != null ? ticket.getAssignedTechnicianUser().getDisplayName() : null)
+                .assignedTechnician(ticket.getAssignedTechnicianUser() != null ? ticket.getAssignedTechnicianUser().getEmail() : ticket.getAssignedTechnician())
                 .resolutionNotes(ticket.getResolutionNotes())
                 .imageUrls(
                         Stream.of(ticket.getImageUrl1(), ticket.getImageUrl2(), ticket.getImageUrl3())

@@ -17,6 +17,6 @@ import lombok.Setter;
 public class UpdateUserRoleRequest {
 
     @NotBlank(message = "Role is required.")
-    @ValidEnumValue(enumClass = Role.class, message = "Role must be one of: USER, ADMIN.")
+    @ValidEnumValue(enumClass = Role.class, message = "Role must be one of: USER, TECHNICIAN, ADMIN.")
     private String role;
 }

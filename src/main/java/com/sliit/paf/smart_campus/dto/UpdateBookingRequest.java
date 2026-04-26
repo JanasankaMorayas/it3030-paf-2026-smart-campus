@@ -5,6 +5,7 @@ import com.sliit.paf.smart_campus.validation.ValidBookingTimeRange;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,7 +26,7 @@ public class UpdateBookingRequest implements BookingTimeRangeRequest {
     @Min(value = 1, message = "Resource id must be at least 1.")
     private Long resourceId;
 
-    @NotBlank(message = "Requester id is required.")
+    @Size(max = 100, message = "Requester id must not exceed 100 characters.")
     private String requesterId;
 
     @NotBlank(message = "Purpose is required.")

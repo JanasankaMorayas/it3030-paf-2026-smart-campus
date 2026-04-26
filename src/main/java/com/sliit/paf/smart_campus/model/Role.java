@@ -4,6 +4,7 @@ import java.util.Locale;
 
 public enum Role {
     USER,
+    TECHNICIAN,
     ADMIN;
 
     public static Role from(String value) {

@@ -5,11 +5,18 @@ import com.sliit.paf.smart_campus.dto.UpdateBookingRequest;
 import com.sliit.paf.smart_campus.dto.UpdateBookingStatusRequest;
 import com.sliit.paf.smart_campus.model.Booking;
 import com.sliit.paf.smart_campus.model.BookingStatus;
+import com.sliit.paf.smart_campus.model.Notification;
 import com.sliit.paf.smart_campus.model.Resource;
 import com.sliit.paf.smart_campus.model.ResourceStatus;
 import com.sliit.paf.smart_campus.model.ResourceType;
+import com.sliit.paf.smart_campus.model.Role;
+import com.sliit.paf.smart_campus.model.User;
+import com.sliit.paf.smart_campus.repository.AuditLogRepository;
 import com.sliit.paf.smart_campus.repository.BookingRepository;
+import com.sliit.paf.smart_campus.repository.NotificationRepository;
 import com.sliit.paf.smart_campus.repository.ResourceRepository;
+import com.sliit.paf.smart_campus.repository.TicketRepository;
+import com.sliit.paf.smart_campus.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +43,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WithMockUser(username = "dev-user@smartcampus.local", roles = "USER")
 class BookingControllerIntegrationTest {
 
+    private static final String ADMIN_EMAIL = "dev-admin@smartcampus.local";
+    private static final String USER_EMAIL = "dev-user@smartcampus.local";
+    private static final String OTHER_EMAIL = "other-user@example.com";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -46,12 +57,36 @@ class BookingControllerIntegrationTest {
     private BookingRepository bookingRepository;
 
     @Autowired
+    private AuditLogRepository auditLogRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
     private ResourceRepository resourceRepository;
+
+    @Autowired
+    private TicketRepository ticketRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    private User adminUser;
+    private User normalUser;
+    private User otherUser;
 
     @BeforeEach
     void setUp() {
+        auditLogRepository.deleteAll();
+        notificationRepository.deleteAll();
         bookingRepository.deleteAll();
+        ticketRepository.deleteAll();
         resourceRepository.deleteAll();
+        userRepository.deleteAll();
+
+        adminUser = saveUser(ADMIN_EMAIL, Role.ADMIN);
+        normalUser = saveUser(USER_EMAIL, Role.USER);
+        otherUser = saveUser(OTHER_EMAIL, Role.USER);
     }
 
     @Test
@@ -60,7 +95,6 @@ class BookingControllerIntegrationTest {
 
         CreateBookingRequest request = CreateBookingRequest.builder()
                 .resourceId(resource.getId())
-                .requesterId("student-1")
                 .purpose("Database lab session")
                 .expectedAttendees(32)
                 .startTime(LocalDateTime.of(2026, 4, 25, 9, 0))
@@ -72,15 +106,35 @@ class BookingControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.resourceId").value(resource.getId()))
-                .andExpect(jsonPath("$.requesterId").value("student-1"))
+                .andExpect(jsonPath("$.requesterId").value(USER_EMAIL))
+                .andExpect(jsonPath("$.ownerEmail").value(USER_EMAIL))
                 .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    void createBooking_shouldReturnForbiddenWhenNormalUserCreatesForAnotherOwner() throws Exception {
+        Resource resource = saveResource("LAB-108", "Ownership Lab");
+
+        CreateBookingRequest request = CreateBookingRequest.builder()
+                .resourceId(resource.getId())
+                .requesterId(OTHER_EMAIL)
+                .purpose("Unauthorized request")
+                .expectedAttendees(20)
+                .startTime(LocalDateTime.of(2026, 4, 25, 12, 0))
+                .endTime(LocalDateTime.of(2026, 4, 25, 14, 0))
+                .build();
+
+        mockMvc.perform(post("/api/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("You can only create bookings for your own account."));
     }
 
     @Test
     void createBooking_shouldReturnNotFoundWhenResourceDoesNotExist() throws Exception {
         CreateBookingRequest request = CreateBookingRequest.builder()
                 .resourceId(999L)
-                .requesterId("student-2")
                 .purpose("Missing resource booking")
                 .expectedAttendees(20)
                 .startTime(LocalDateTime.of(2026, 4, 25, 12, 0))
@@ -99,7 +153,8 @@ class BookingControllerIntegrationTest {
         Resource resource = saveResource("LAB-102", "Networks Lab");
         bookingRepository.save(Booking.builder()
                 .resource(resource)
-                .requesterId("student-3")
+                .ownerUser(otherUser)
+                .requesterId(OTHER_EMAIL)
                 .purpose("Existing booking")
                 .expectedAttendees(25)
                 .startTime(LocalDateTime.of(2026, 4, 25, 10, 0))
@@ -109,7 +164,6 @@ class BookingControllerIntegrationTest {
 
         CreateBookingRequest request = CreateBookingRequest.builder()
                 .resourceId(resource.getId())
-                .requesterId("student-4")
                 .purpose("Overlap booking")
                 .expectedAttendees(20)
                 .startTime(LocalDateTime.of(2026, 4, 25, 11, 0))
@@ -124,11 +178,12 @@ class BookingControllerIntegrationTest {
     }
 
     @Test
-    void getAllBookings_shouldApplyOptionalFilters() throws Exception {
+    void getAllBookings_shouldReturnOnlyCurrentUsersBookings() throws Exception {
         Resource resource = saveResource("LAB-103", "Data Lab");
         bookingRepository.save(Booking.builder()
                 .resource(resource)
-                .requesterId("student-5")
+                .ownerUser(normalUser)
+                .requesterId(USER_EMAIL)
                 .purpose("Matching booking")
                 .expectedAttendees(15)
                 .startTime(LocalDateTime.of(2026, 4, 26, 8, 0))
@@ -138,22 +193,78 @@ class BookingControllerIntegrationTest {
 
         bookingRepository.save(Booking.builder()
                 .resource(resource)
-                .requesterId("student-6")
-                .purpose("Non matching booking")
+                .ownerUser(otherUser)
+                .requesterId(OTHER_EMAIL)
+                .purpose("Other booking")
                 .expectedAttendees(10)
                 .startTime(LocalDateTime.of(2026, 4, 26, 11, 0))
                 .endTime(LocalDateTime.of(2026, 4, 26, 12, 0))
                 .status(BookingStatus.PENDING)
                 .build());
 
-        mockMvc.perform(get("/api/bookings")
-                        .param("resourceId", String.valueOf(resource.getId()))
-                        .param("requesterId", "student-5")
-                        .param("status", "APPROVED"))
+        mockMvc.perform(get("/api/bookings"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].requesterId").value("student-5"))
-                .andExpect(jsonPath("$[0].status").value("APPROVED"));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].requesterId").value(USER_EMAIL))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.sort[0]").value("startTime,asc"));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "ADMIN")
+    void getAllBookings_shouldAllowAdminToFilterOtherOwners() throws Exception {
+        Resource resource = saveResource("LAB-109", "Admin Filter Lab");
+        bookingRepository.save(Booking.builder()
+                .resource(resource)
+                .ownerUser(normalUser)
+                .requesterId(USER_EMAIL)
+                .purpose("Current user booking")
+                .expectedAttendees(10)
+                .startTime(LocalDateTime.of(2026, 4, 26, 8, 0))
+                .endTime(LocalDateTime.of(2026, 4, 26, 9, 0))
+                .status(BookingStatus.PENDING)
+                .build());
+        bookingRepository.save(Booking.builder()
+                .resource(resource)
+                .ownerUser(otherUser)
+                .requesterId(OTHER_EMAIL)
+                .purpose("Other user booking")
+                .expectedAttendees(12)
+                .startTime(LocalDateTime.of(2026, 4, 26, 10, 0))
+                .endTime(LocalDateTime.of(2026, 4, 26, 11, 0))
+                .status(BookingStatus.APPROVED)
+                .build());
+
+        mockMvc.perform(get("/api/bookings")
+                        .param("requesterId", OTHER_EMAIL)
+                        .param("status", "APPROVED")
+                        .param("size", "5")
+                        .param("sort", "createdAt,desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].requesterId").value(OTHER_EMAIL))
+                .andExpect(jsonPath("$.size").value(5))
+                .andExpect(jsonPath("$.sort[0]").value("createdAt,desc"));
+    }
+
+    @Test
+    void getBookingById_shouldReturnForbiddenForOtherUsersBooking() throws Exception {
+        Resource resource = saveResource("LAB-110", "Forbidden Lab");
+        Booking booking = bookingRepository.save(Booking.builder()
+                .resource(resource)
+                .ownerUser(otherUser)
+                .requesterId(OTHER_EMAIL)
+                .purpose("Other owner booking")
+                .expectedAttendees(18)
+                .startTime(LocalDateTime.of(2026, 4, 26, 13, 0))
+                .endTime(LocalDateTime.of(2026, 4, 26, 14, 0))
+                .status(BookingStatus.PENDING)
+                .build());
+
+        mockMvc.perform(get("/api/bookings/{id}", booking.getId()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("You can only access your own bookings."));
     }
 
     @Test
@@ -162,7 +273,8 @@ class BookingControllerIntegrationTest {
         Resource updatedResource = saveResource("ROOM-201", "Meeting Room");
         Booking booking = bookingRepository.save(Booking.builder()
                 .resource(originalResource)
-                .requesterId("student-7")
+                .ownerUser(normalUser)
+                .requesterId(USER_EMAIL)
                 .purpose("Original session")
                 .expectedAttendees(18)
                 .startTime(LocalDateTime.of(2026, 4, 26, 9, 0))
@@ -172,7 +284,6 @@ class BookingControllerIntegrationTest {
 
         UpdateBookingRequest request = UpdateBookingRequest.builder()
                 .resourceId(updatedResource.getId())
-                .requesterId("student-7")
                 .purpose("Updated session")
                 .expectedAttendees(20)
                 .startTime(LocalDateTime.of(2026, 4, 26, 13, 0))
@@ -184,16 +295,18 @@ class BookingControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resourceId").value(updatedResource.getId()))
+                .andExpect(jsonPath("$.ownerEmail").value(USER_EMAIL))
                 .andExpect(jsonPath("$.purpose").value("Updated session"));
     }
 
     @Test
-    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
+    @WithMockUser(username = ADMIN_EMAIL, roles = "ADMIN")
     void updateBookingStatus_shouldApproveBooking() throws Exception {
         Resource resource = saveResource("LAB-105", "Approval Lab");
         Booking booking = bookingRepository.save(Booking.builder()
                 .resource(resource)
-                .requesterId("student-8")
+                .ownerUser(otherUser)
+                .requesterId(OTHER_EMAIL)
                 .purpose("Approval request")
                 .expectedAttendees(12)
                 .startTime(LocalDateTime.of(2026, 4, 27, 8, 0))
@@ -215,11 +328,12 @@ class BookingControllerIntegrationTest {
     }
 
     @Test
-    void deleteBooking_shouldCancelBooking() throws Exception {
+    void deleteBooking_shouldCancelOwnedBooking() throws Exception {
         Resource resource = saveResource("LAB-106", "Cancel Lab");
         Booking booking = bookingRepository.save(Booking.builder()
                 .resource(resource)
-                .requesterId("student-9")
+                .ownerUser(normalUser)
+                .requesterId(USER_EMAIL)
                 .purpose("Cancel me")
                 .expectedAttendees(16)
                 .startTime(LocalDateTime.of(2026, 4, 27, 11, 0))
@@ -239,7 +353,6 @@ class BookingControllerIntegrationTest {
     void createBooking_shouldReturnBadRequestWhenValidationFails() throws Exception {
         CreateBookingRequest request = CreateBookingRequest.builder()
                 .resourceId(0L)
-                .requesterId("")
                 .purpose("")
                 .expectedAttendees(0)
                 .startTime(LocalDateTime.of(2026, 4, 27, 15, 0))
@@ -251,17 +364,18 @@ class BookingControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.validationErrors.resourceId").value("Resource id must be at least 1."))
-                .andExpect(jsonPath("$.validationErrors.requesterId").value("Requester id is required."))
+                .andExpect(jsonPath("$.validationErrors.purpose").value("Purpose is required."))
                 .andExpect(jsonPath("$.validationErrors.endTime").value("End time must be after start time."));
     }
 
     @Test
-    @WithMockUser(username = "dev-admin@smartcampus.local", roles = "ADMIN")
+    @WithMockUser(username = ADMIN_EMAIL, roles = "ADMIN")
     void updateBookingStatus_shouldReturnBadRequestWhenStatusIsInvalid() throws Exception {
         Resource resource = saveResource("LAB-107", "Status Lab");
         Booking booking = bookingRepository.save(Booking.builder()
                 .resource(resource)
-                .requesterId("student-10")
+                .ownerUser(otherUser)
+                .requesterId(OTHER_EMAIL)
                 .purpose("Invalid status check")
                 .expectedAttendees(8)
                 .startTime(LocalDateTime.of(2026, 4, 27, 16, 0))
@@ -296,6 +410,17 @@ class BookingControllerIntegrationTest {
                 .capacity(50)
                 .location("Block A")
                 .status(ResourceStatus.ACTIVE)
+                .build());
+    }
+
+    private User saveUser(String email, Role role) {
+        return userRepository.save(User.builder()
+                .email(email)
+                .displayName(email)
+                .provider("LOCAL_DEV")
+                .providerId(email)
+                .role(role)
+                .active(true)
                 .build());
     }
 }

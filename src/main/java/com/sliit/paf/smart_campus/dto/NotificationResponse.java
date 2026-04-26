@@ -18,6 +18,8 @@ import java.time.LocalDateTime;
 public class NotificationResponse {
 
     private Long id;
+    private Long recipientUserId;
+    private String recipientEmail;
     private String recipientIdentifier;
     private String title;
     private String message;
@@ -31,7 +33,9 @@ public class NotificationResponse {
     public static NotificationResponse from(Notification notification) {
         return NotificationResponse.builder()
                 .id(notification.getId())
-                .recipientIdentifier(notification.getRecipientIdentifier())
+                .recipientUserId(notification.getRecipientUser() != null ? notification.getRecipientUser().getId() : null)
+                .recipientEmail(notification.getRecipientUser() != null ? notification.getRecipientUser().getEmail() : notification.getRecipientIdentifier())
+                .recipientIdentifier(notification.getRecipientUser() != null ? notification.getRecipientUser().getEmail() : notification.getRecipientIdentifier())
                 .title(notification.getTitle())
                 .message(notification.getMessage())
                 .type(notification.getType())

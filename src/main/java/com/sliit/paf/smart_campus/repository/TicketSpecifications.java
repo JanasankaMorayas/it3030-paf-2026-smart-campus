@@ -4,6 +4,7 @@ import com.sliit.paf.smart_campus.model.Ticket;
 import com.sliit.paf.smart_campus.model.TicketCategory;
 import com.sliit.paf.smart_campus.model.TicketPriority;
 import com.sliit.paf.smart_campus.model.TicketStatus;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
 
@@ -42,15 +43,42 @@ public final class TicketSpecifications {
         };
     }
 
+    public static Specification<Ticket> hasReporterIdentifier(String reporterIdentifier) {
+        return (root, query, criteriaBuilder) -> {
+            if (!StringUtils.hasText(reporterIdentifier)) {
+                return criteriaBuilder.conjunction();
+            }
+
+            String normalizedIdentifier = reporterIdentifier.trim().toLowerCase(Locale.ROOT);
+            return criteriaBuilder.or(
+                    criteriaBuilder.equal(
+                            criteriaBuilder.lower(root.get("reportedBy")),
+                            normalizedIdentifier
+                    ),
+                    criteriaBuilder.equal(
+                            criteriaBuilder.lower(root.join("reportedByUser", JoinType.LEFT).get("email")),
+                            normalizedIdentifier
+                    )
+            );
+        };
+    }
+
     public static Specification<Ticket> hasAssignedTechnician(String assignedTechnician) {
         return (root, query, criteriaBuilder) -> {
             if (!StringUtils.hasText(assignedTechnician)) {
                 return criteriaBuilder.conjunction();
             }
 
-            return criteriaBuilder.equal(
-                    criteriaBuilder.lower(root.get("assignedTechnician")),
-                    assignedTechnician.trim().toLowerCase(Locale.ROOT)
+            String normalizedIdentifier = assignedTechnician.trim().toLowerCase(Locale.ROOT);
+            return criteriaBuilder.or(
+                    criteriaBuilder.equal(
+                            criteriaBuilder.lower(root.get("assignedTechnician")),
+                            normalizedIdentifier
+                    ),
+                    criteriaBuilder.equal(
+                            criteriaBuilder.lower(root.join("assignedTechnicianUser", JoinType.LEFT).get("email")),
+                            normalizedIdentifier
+                    )
             );
         };
     }
