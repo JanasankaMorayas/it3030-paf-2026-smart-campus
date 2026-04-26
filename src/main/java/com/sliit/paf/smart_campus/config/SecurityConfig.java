@@ -44,7 +44,7 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(Customizer.withDefaults())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/error", "/login", "/login/**", "/oauth2/**", "/login/oauth2/**", "/oauth2/authorization/**").permitAll()
+                        .requestMatchers("/error", "/login", "/login/**", "/oauth2/**", "/login/oauth2/**", "/oauth2/authorization/**", "/api/auth/status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/resources/**").permitAll()
                         .requestMatchers("/api/resources/**").hasRole("ADMIN")
                         .requestMatchers("/api/audit-logs/**", "/api/admin/**").hasRole("ADMIN")
@@ -75,14 +75,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(AppSecurityProperties securityProperties) {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://localhost:4173",
-                "http://127.0.0.1:4173"
-        ));
+        configuration.setAllowedOrigins(securityProperties.getAllowedFrontendOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
         configuration.setExposedHeaders(List.of("Location"));

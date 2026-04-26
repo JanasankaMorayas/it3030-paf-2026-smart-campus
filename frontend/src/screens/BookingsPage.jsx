@@ -1,11 +1,18 @@
 import { CheckCircle2, Pencil, Plus, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
+import DataToolbar from "../components/DataToolbar.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 import FeedbackBanner from "../components/FeedbackBanner.jsx";
+import LoadingState from "../components/LoadingState.jsx";
 import Modal from "../components/Modal.jsx";
+import PageShell from "../components/PageShell.jsx";
 import PaginationBar from "../components/PaginationBar.jsx";
+import SectionCard from "../components/SectionCard.jsx";
+import StatCard from "../components/StatCard.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { formatDateRange, toDateTimeLocalValue } from "../lib/format.js";
+import { compactCount, formatDateRange, toDateTimeLocalValue, titleizeEnum } from "../lib/format.js";
 import { BOOKING_SORT_OPTIONS, BOOKING_STATUSES, PAGE_SIZE_OPTIONS } from "../lib/options.js";
 import { api } from "../lib/api.js";
 
@@ -39,7 +46,9 @@ export default function BookingsPage() {
   const [editingBooking, setEditingBooking] = useState(null);
   const [formState, setFormState] = useState(bookingFormTemplate);
   const [formError, setFormError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [statusModal, setStatusModal] = useState({ open: false, bookingId: null, status: "APPROVED", adminDecisionReason: "" });
+  const [cancelTarget, setCancelTarget] = useState(null);
 
   async function loadResources() {
     const response = await api.resources.list();
@@ -101,6 +110,7 @@ export default function BookingsPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setSubmitting(true);
     setFormError(null);
 
     const payload = {
@@ -118,15 +128,19 @@ export default function BookingsPage() {
       }
 
       setModalOpen(false);
-      await loadBookings(0, appliedFilters);
       setPage(0);
+      await loadBookings(0, appliedFilters);
     } catch (submitError) {
       setFormError(submitError);
+    } finally {
+      setSubmitting(false);
     }
   }
 
   async function handleStatusUpdate(event) {
     event.preventDefault();
+    setSubmitting(true);
+    setFormError(null);
 
     try {
       await api.bookings.updateStatus(statusModal.bookingId, {
@@ -138,16 +152,19 @@ export default function BookingsPage() {
       await loadBookings(page, appliedFilters);
     } catch (statusError) {
       setFormError(statusError);
+    } finally {
+      setSubmitting(false);
     }
   }
 
-  async function handleCancel(bookingId) {
-    if (!window.confirm("Cancel this booking?")) {
+  async function handleCancelConfirmed() {
+    if (!cancelTarget) {
       return;
     }
 
     try {
-      await api.bookings.cancel(bookingId);
+      await api.bookings.cancel(cancelTarget.id);
+      setCancelTarget(null);
       await loadBookings(page, appliedFilters);
     } catch (cancelError) {
       setError(cancelError);
@@ -155,22 +172,47 @@ export default function BookingsPage() {
   }
 
   const bookings = pageData?.content || [];
+  const pendingCount = bookings.filter((booking) => booking.status === "PENDING").length;
+  const approvedCount = bookings.filter((booking) => booking.status === "APPROVED").length;
+  const cancelledCount = bookings.filter((booking) => booking.status === "CANCELLED").length;
 
   return (
-    <div className="page-stack">
-      <section className="page-header">
-        <div>
-          <p className="eyebrow">Module B</p>
-          <h2>Bookings</h2>
-          <p>Create, review, approve, reject, and track resource usage requests with ownership-aware access.</p>
+    <PageShell
+      eyebrow="Module B"
+      title="Booking workflow"
+      description="Manage reservation intake, admin decisions, and ownership-aware changes across campus resources."
+      actions={(
+        <div className="stacked-actions">
+          <button type="button" className="button button--ghost" onClick={() => void loadBookings(page, appliedFilters)}>
+            Refresh queue
+          </button>
+          <button type="button" className="button button--primary" onClick={openCreate}>
+            <Plus size={16} />
+            Create booking
+          </button>
         </div>
-        <button type="button" className="button button--primary" onClick={openCreate}>
-          <Plus size={16} />
-          Create booking
-        </button>
+      )}
+      meta={(
+        <>
+          <StatusBadge value={isAdmin ? "ADMIN" : "USER"} variant="general" />
+          <span className="page-shell__meta-text">
+            {isAdmin ? "Admin decisions can approve, reject, or cancel requests." : "Your view is scoped to bookings you own."}
+          </span>
+        </>
+      )}
+    >
+      <section className="dashboard-stat-grid dashboard-stat-grid--compact">
+        <StatCard icon={Plus} label="Visible bookings" value={loading ? "..." : compactCount(pageData?.totalElements ?? 0)} hint="Across your current filters and access" tone="teal" />
+        <StatCard icon={CheckCircle2} label="Pending on page" value={loading ? "..." : compactCount(pendingCount)} hint="Requests waiting for action in this page slice" tone="sand" />
+        <StatCard icon={CheckCircle2} label="Approved on page" value={loading ? "..." : compactCount(approvedCount)} hint="Confirmed reservations in the current result set" tone="cream" />
+        <StatCard icon={XCircle} label="Cancelled on page" value={loading ? "..." : compactCount(cancelledCount)} hint="Stopped requests in the current result set" tone="teal" />
       </section>
 
-      <section className="panel">
+      <DataToolbar
+        eyebrow="Queue filters"
+        title="Shape the booking board"
+        description="Filter by resource, requester, status, sorting, and page size without leaving the workflow."
+      >
         <form
           className="filters-grid"
           onSubmit={(event) => {
@@ -185,7 +227,7 @@ export default function BookingsPage() {
               <option value="">All resources</option>
               {resources.map((resource) => (
                 <option key={resource.id} value={resource.id}>
-                  {resource.resourceCode} · {resource.name}
+                  {resource.resourceCode} - {resource.name}
                 </option>
               ))}
             </select>
@@ -196,7 +238,7 @@ export default function BookingsPage() {
             <input
               value={filters.requesterId}
               onChange={(event) => setFilters((current) => ({ ...current, requesterId: event.target.value }))}
-              placeholder={isAdmin ? "Filter by email" : "Your own bookings are already scoped"}
+              placeholder={isAdmin ? "Filter by email" : "Already scoped to your ownership"}
               disabled={!isAdmin}
             />
           </label>
@@ -207,7 +249,7 @@ export default function BookingsPage() {
               <option value="">All statuses</option>
               {BOOKING_STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {titleizeEnum(status)}
                 </option>
               ))}
             </select>
@@ -236,7 +278,7 @@ export default function BookingsPage() {
           </label>
 
           <div className="filter-actions">
-            <button type="submit" className="button button--ghost">
+            <button type="submit" className="button button--primary">
               Apply filters
             </button>
             <button
@@ -252,19 +294,19 @@ export default function BookingsPage() {
             </button>
           </div>
         </form>
-      </section>
+      </DataToolbar>
 
       <FeedbackBanner error={error} />
 
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <p className="eyebrow">Paged results</p>
-            <h3>{loading ? "Loading bookings..." : `${pageData?.totalElements ?? 0} matching bookings`}</h3>
-          </div>
-        </div>
-
-        {bookings.length ? (
+      <SectionCard
+        eyebrow="Reservation board"
+        title={loading ? "Loading bookings" : `${pageData?.totalElements ?? 0} bookings in scope`}
+        description="See ownership, status, timing, and approval decisions at one glance."
+        footer={<PaginationBar pageData={pageData} onPageChange={setPage} />}
+      >
+        {loading ? (
+          <LoadingState title="Loading booking queue" message="Pulling the latest reservation workflow state." lines={6} />
+        ) : bookings.length ? (
           <div className="table-wrapper">
             <table className="data-table">
               <thead>
@@ -281,8 +323,9 @@ export default function BookingsPage() {
               </thead>
               <tbody>
                 {bookings.map((booking) => {
-                  const canEdit = booking.status === "PENDING" && (isAdmin || booking.ownerEmail === currentUser.email);
-                  const canCancel = (booking.status === "PENDING" || booking.status === "APPROVED") && (isAdmin || booking.ownerEmail === currentUser.email);
+                  const canEdit = booking.status === "PENDING" && (isAdmin || booking.ownerEmail === currentUser?.email);
+                  const canCancel = (booking.status === "PENDING" || booking.status === "APPROVED")
+                    && (isAdmin || booking.ownerEmail === currentUser?.email);
 
                   return (
                     <tr key={booking.id}>
@@ -300,7 +343,7 @@ export default function BookingsPage() {
                       <td>
                         <StatusBadge value={booking.status} />
                       </td>
-                      <td>{booking.adminDecisionReason || "—"}</td>
+                      <td>{booking.adminDecisionReason || "-"}</td>
                       <td>
                         <div className="table-actions">
                           {canEdit ? (
@@ -337,7 +380,7 @@ export default function BookingsPage() {
                           ) : null}
 
                           {canCancel ? (
-                            <button type="button" className="button button--subtle" onClick={() => void handleCancel(booking.id)}>
+                            <button type="button" className="button button--subtle" onClick={() => setCancelTarget(booking)}>
                               Cancel
                             </button>
                           ) : null}
@@ -350,16 +393,18 @@ export default function BookingsPage() {
             </table>
           </div>
         ) : (
-          <div className="empty-state">No bookings matched the current scope.</div>
+          <EmptyState
+            title="No bookings found"
+            message="Try another filter combination or create a fresh booking request."
+            action={<button type="button" className="button button--primary" onClick={openCreate}>Create booking</button>}
+          />
         )}
-
-        <PaginationBar pageData={pageData} onPageChange={setPage} />
-      </section>
+      </SectionCard>
 
       <Modal
         isOpen={modalOpen}
         title={editingBooking ? "Update booking" : "Create booking"}
-        subtitle="Booking ownership is enforced by the backend for normal users."
+        subtitle="Normal users stay ownership-scoped. Admins can create on behalf of another requester when needed."
         onClose={() => setModalOpen(false)}
       >
         <form className="form-grid" onSubmit={handleSubmit}>
@@ -369,7 +414,7 @@ export default function BookingsPage() {
               <option value="">Select a resource</option>
               {resources.map((resource) => (
                 <option key={resource.id} value={resource.id}>
-                  {resource.resourceCode} · {resource.name}
+                  {resource.resourceCode} - {resource.name}
                 </option>
               ))}
             </select>
@@ -412,7 +457,7 @@ export default function BookingsPage() {
             <button type="button" className="button button--ghost" onClick={() => setModalOpen(false)}>
               Cancel
             </button>
-            <button type="submit" className="button button--primary">
+            <button type="submit" className="button button--primary" disabled={submitting}>
               {editingBooking ? "Save booking" : "Create booking"}
             </button>
           </div>
@@ -421,8 +466,8 @@ export default function BookingsPage() {
 
       <Modal
         isOpen={statusModal.open}
-        title={`Set booking to ${statusModal.status}`}
-        subtitle="Admin decision reason is optional for approvals and useful for rejections."
+        title={`Set booking to ${titleizeEnum(statusModal.status)}`}
+        subtitle="Use a clear reason when rejecting or cancelling so the requester can act on it quickly."
         onClose={() => setStatusModal({ open: false, bookingId: null, status: "APPROVED", adminDecisionReason: "" })}
       >
         <form className="form-grid" onSubmit={handleStatusUpdate}>
@@ -454,12 +499,21 @@ export default function BookingsPage() {
             >
               Close
             </button>
-            <button type="submit" className="button button--primary">
+            <button type="submit" className="button button--primary" disabled={submitting}>
               Update booking status
             </button>
           </div>
         </form>
       </Modal>
-    </div>
+
+      <ConfirmDialog
+        open={Boolean(cancelTarget)}
+        title="Cancel booking"
+        message={cancelTarget ? `Cancel booking for ${cancelTarget.resourceName} scheduled ${formatDateRange(cancelTarget.startTime, cancelTarget.endTime)}?` : ""}
+        confirmLabel="Cancel booking"
+        onConfirm={handleCancelConfirmed}
+        onClose={() => setCancelTarget(null)}
+      />
+    </PageShell>
   );
 }

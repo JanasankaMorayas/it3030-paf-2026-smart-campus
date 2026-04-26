@@ -23,6 +23,15 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.googleOauthConfigured").value(false))
                 .andExpect(jsonPath("$.message").value("Google OAuth2 login is not configured yet."))
-                .andExpect(jsonPath("$.expectedRedirectUri").value("http://localhost:8080/login/oauth2/code/google"));
+                .andExpect(jsonPath("$.expectedRedirectUri").value("http://localhost:8080/login/oauth2/code/google"))
+                .andExpect(jsonPath("$.successRedirectUri").value("http://127.0.0.1:5173/"));
+    }
+
+    @Test
+    void authStatus_shouldExposeGoogleConfigurationState() throws Exception {
+        mockMvc.perform(get("/api/auth/status").param("redirect_uri", "http://127.0.0.1:5174/"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.googleOauthConfigured").value(false))
+                .andExpect(jsonPath("$.successRedirectUri").value("http://127.0.0.1:5174/"));
     }
 }

@@ -1,5 +1,5 @@
 import { ArrowRight, KeyRound, RefreshCcw, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import FeedbackBanner from "../components/FeedbackBanner.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -21,6 +21,30 @@ export default function LoginPage() {
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [googleStatus, setGoogleStatus] = useState({
+    loading: true,
+    configured: false,
+    message: null,
+  });
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const status = await api.auth.getStatus();
+        setGoogleStatus({
+          loading: false,
+          configured: status.googleOauthConfigured,
+          message: status.message,
+        });
+      } catch (statusError) {
+        setGoogleStatus({
+          loading: false,
+          configured: false,
+          message: statusError.message,
+        });
+      }
+    })();
+  }, []);
 
   async function handleBasicLogin(event) {
     event.preventDefault();
@@ -49,7 +73,7 @@ export default function LoginPage() {
     } catch (sessionError) {
       setInfo({
         message: sessionError.status === 401
-          ? "No active Google session was found yet. Finish the Google sign-in tab first, then come back and try again."
+          ? "No active Google session was found yet. Finish the Google sign-in flow first, then try again."
           : sessionError.message,
       });
     } finally {
@@ -64,7 +88,7 @@ export default function LoginPage() {
           <p className="eyebrow">Smart Campus Operations Hub</p>
           <h1>Sign in to the operations dashboard</h1>
           <p className="panel-description">
-            Use Google OAuth in a browser tab or sign in with local Basic Auth demo users for assignment walkthroughs.
+            Choose Google OAuth for the browser demo flow or use local Basic Auth accounts for quick assignment walkthroughs.
           </p>
         </div>
 
@@ -75,29 +99,39 @@ export default function LoginPage() {
               <h2>Google browser login</h2>
             </div>
             <p>
-              This uses the backend OAuth flow at <strong>{api.auth.getApiBaseUrl()}</strong>. Open Google login,
-              complete the browser flow, then come back here and refresh the session.
+              This uses the backend OAuth flow at <strong>{api.auth.getApiBaseUrl()}</strong>. Start sign-in and the browser should return
+              to the React dashboard automatically after Google authentication completes.
             </p>
 
             <div className="stacked-actions">
-              <a
-                className="button button--primary"
-                href={api.auth.getGoogleLoginUrl()}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Continue with Google
-                <ArrowRight size={16} />
-              </a>
+              {googleStatus.configured ? (
+                <a className="button button--primary" href={api.auth.getGoogleLoginUrl()}>
+                  Continue with Google
+                  <ArrowRight size={16} />
+                </a>
+              ) : (
+                <button type="button" className="button button--secondary" disabled>
+                  Google login unavailable
+                </button>
+              )}
               <button type="button" className="button button--ghost" onClick={() => void handleGoogleRefresh()} disabled={busy}>
                 <RefreshCcw size={16} />
-                I finished Google sign-in
+                Refresh session
               </button>
             </div>
 
+            <FeedbackBanner
+              error={googleStatus.loading ? null : {
+                message: googleStatus.configured
+                  ? "Google OAuth is configured. Use the browser flow above or refresh an existing session."
+                  : googleStatus.message || "Google OAuth is not configured in the backend environment yet.",
+              }}
+              kind={googleStatus.configured ? "success" : "info"}
+            />
+
             <ul className="hint-list">
-              <li>Backend must be running on `http://localhost:8080`.</li>
-              <li>Google sign-in opens in a new tab and the backend session cookie is reused here.</li>
+              <li>Backend must be running on <strong>{api.auth.getApiBaseUrl()}</strong>.</li>
+              <li>Successful Google sign-in should return straight to the dashboard in the same browser session.</li>
               <li>If Google OAuth is not configured yet, use Basic Auth demo mode below.</li>
             </ul>
           </section>
@@ -113,6 +147,7 @@ export default function LoginPage() {
                 <span>Email</span>
                 <input
                   type="email"
+                  autoComplete="username"
                   value={form.username}
                   onChange={(event) => setForm((current) => ({ ...current, username: event.target.value }))}
                   placeholder="dev-user@smartcampus.local"
@@ -123,6 +158,7 @@ export default function LoginPage() {
                 <span>Password</span>
                 <input
                   type="password"
+                  autoComplete="current-password"
                   value={form.password}
                   onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
                   placeholder="dev-user-pass"

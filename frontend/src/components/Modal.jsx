@@ -12,7 +12,7 @@ export default function Modal({ isOpen, title, subtitle, onClose, children }) {
             {subtitle ? <p>{subtitle}</p> : null}
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close dialog">
-            ×
+            X
           </button>
         </div>
         <div className="modal-body">{children}</div>
