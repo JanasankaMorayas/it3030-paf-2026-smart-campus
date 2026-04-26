@@ -3,7 +3,10 @@ package com.sliit.paf.smart_campus.controller;
 import com.sliit.paf.smart_campus.dto.UpdateUserRoleRequest;
 import com.sliit.paf.smart_campus.model.Role;
 import com.sliit.paf.smart_campus.model.User;
+import com.sliit.paf.smart_campus.repository.AuditLogRepository;
+import com.sliit.paf.smart_campus.repository.BookingRepository;
 import com.sliit.paf.smart_campus.repository.NotificationRepository;
+import com.sliit.paf.smart_campus.repository.TicketRepository;
 import com.sliit.paf.smart_campus.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,9 +43,21 @@ class UserControllerIntegrationTest {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    @Autowired
+    private AuditLogRepository auditLogRepository;
+
+    @Autowired
+    private BookingRepository bookingRepository;
+
+    @Autowired
+    private TicketRepository ticketRepository;
+
     @BeforeEach
     void setUp() {
+        auditLogRepository.deleteAll();
         notificationRepository.deleteAll();
+        bookingRepository.deleteAll();
+        ticketRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -157,6 +172,15 @@ class UserControllerIntegrationTest {
     @Test
     @WithMockUser(username = "admin@example.com", roles = "ADMIN")
     void updateUserRole_shouldUpdateRoleForAdmin() throws Exception {
+        userRepository.save(User.builder()
+                .email("admin@example.com")
+                .displayName("Admin User")
+                .provider("LOCAL_DEV")
+                .providerId("admin@example.com")
+                .role(Role.ADMIN)
+                .active(true)
+                .build());
+
         User savedUser = userRepository.save(User.builder()
                 .email("change-role@example.com")
                 .displayName("Change Role")

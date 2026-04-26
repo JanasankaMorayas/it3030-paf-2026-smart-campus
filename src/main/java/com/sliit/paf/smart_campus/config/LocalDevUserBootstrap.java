@@ -25,8 +25,10 @@ public class LocalDevUserBootstrap implements ApplicationRunner {
 
         AppSecurityProperties.DevUserProperties admin = securityProperties.getDevUsers().getAdmin();
         AppSecurityProperties.DevUserProperties user = securityProperties.getDevUsers().getUser();
+        AppSecurityProperties.DevUserProperties technician = securityProperties.getDevUsers().getTechnician();
 
         userService.ensureLocalUserExists(admin.getEmail(), admin.getDisplayName(), Role.ADMIN);
         userService.ensureLocalUserExists(user.getEmail(), user.getDisplayName(), Role.USER);
+        userService.ensureLocalUserExists(technician.getEmail(), technician.getDisplayName(), Role.TECHNICIAN);
     }
 }

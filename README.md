@@ -10,7 +10,8 @@ This repository currently covers:
 - Module B booking management APIs for creating, reviewing, filtering, and cancelling resource bookings
 - Module C maintenance and incident ticketing APIs for campus issue reporting and technician handling
 - Module D notification APIs for booking and ticket event alerts
-- Module E authentication and role-management groundwork for future OAuth2 and RBAC enforcement
+- Module E authentication, role management, and Google OAuth2-ready backend login flow
+- final backend hardening for ownership, technician workflow, audit history, legacy backfill, and API polish
 
 Implemented in this sprint:
 
@@ -30,6 +31,13 @@ Implemented in this sprint:
 - persisted user model with `USER` and `ADMIN` roles
 - local development basic-auth users plus Google OAuth2 login support through external configuration
 - admin role management endpoints and current-user endpoint
+- ownership-aware booking and ticket flows linked to local authenticated users
+- notification inbox alignment with linked recipients and admin-wide visibility support
+- technician role support with user-linked ticket assignment and technician-specific workflow permissions
+- audit log visibility for important booking, ticket, role, and notification actions
+- admin backfill utility for linking older legacy string-based ownership records to local users
+- paginated and sortable booking, ticket, notification, and audit APIs
+- consistent bulk-action summary responses for read-all style operations
 - H2-backed automated tests for Modules A, B, C, D, and E foundation
 
 ## Tech stack
@@ -68,6 +76,50 @@ PowerShell command:
 .\mvnw test
 ```
 
+## Response conventions
+
+Paged endpoints return a common envelope:
+
+```json
+{
+  "content": [],
+  "page": 0,
+  "size": 20,
+  "totalElements": 0,
+  "totalPages": 0,
+  "first": true,
+  "last": true,
+  "sort": [
+    "createdAt,desc"
+  ]
+}
+```
+
+Current paging rules:
+
+- default page size is `20`
+- maximum page size is `100`
+- sort fields are whitelisted per endpoint group
+- empty list queries still return `200 OK` with an empty `content` array
+
+Error handling stays consistent across modules:
+
+- `400 Bad Request` for validation and request-shape problems
+- `403 Forbidden` for ownership and role violations
+- `404 Not Found` for missing records
+- `409 Conflict` for duplicate or invalid workflow transitions
+
+Bulk endpoints such as `PATCH /api/notifications/read-all` now return a small JSON summary instead of an empty response body.
+
+## Pagination and sorting examples
+
+```http
+GET /api/bookings?page=0&size=10&sort=startTime,asc
+GET /api/tickets?page=0&size=10&sort=createdAt,desc
+GET /api/notifications?unreadOnly=true&page=0&size=20&sort=createdAt,desc
+GET /api/audit-logs?entityType=TICKET&page=0&size=20&sort=createdAt,desc
+```
+
 ## Auth and security
 
 Module E now supports both local development auth and Google OAuth2 login when credentials are supplied externally. Current backend security supports:
@@ -84,6 +136,16 @@ Current route strategy:
 - notification APIs require authentication
 - booking status updates and technician assignment have admin protection
 - user management endpoints are protected, with admin-only access where appropriate
+- normal users are limited to their own bookings, tickets, and notification inbox
+- technicians can see tickets assigned to them and progress their workflow
+- admins can manage all bookings and tickets, and can inspect any notification inbox when needed
+- audit and backfill endpoints are admin-only
+
+Operational notes:
+
+- `spring.jpa.open-in-view=false` is enabled so entity loading stays inside the service layer
+- `spring.data.web.pageable.max-page-size=100` is enabled for safer paging defaults
+- local MySQL development still points to `smart_campus_db_v2`
 
 ### Google OAuth2 configuration
 
@@ -222,12 +284,15 @@ A ready-to-import Postman collection is available in:
 
 - `smart-campus-module-a.postman_collection.json`
 - `postman/collections/smart-campus-module-a.postman_collection.json`
+- `smart-campus-backend-demo.postman_collection.json`
+
+The backend demo collection is organized for final manual walkthroughs across public resource reads, authenticated booking and ticket flows, notification inbox checks, and admin audit/backfill actions.
 
 ## Booking API
 
 | Method | URL | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/bookings` | Get all bookings with optional filters |
+| `GET` | `/api/bookings` | Get paged bookings with optional filters |
 | `GET` | `/api/bookings/{id}` | Get a single booking by id |
 | `POST` | `/api/bookings` | Create a new booking request |
 | `PUT` | `/api/bookings/{id}` | Update a pending booking |
@@ -246,12 +311,17 @@ Example:
 GET /api/bookings?resourceId=1&requesterId=student-1&status=PENDING
 ```
 
+Paging example:
+
+```http
+GET /api/bookings?status=PENDING&page=0&size=5&sort=createdAt,desc
+```
+
 ## Sample booking create request
 
 ```json
 {
   "resourceId": 1,
-  "requesterId": "student-1",
   "purpose": "Database practical session",
   "expectedAttendees": 30,
   "startTime": "2026-04-25T09:00:00",
@@ -261,6 +331,8 @@ GET /api/bookings?resourceId=1&requesterId=student-1&status=PENDING
 
 ## Booking rules
 
+- authenticated `USER` requests default to the logged-in user as booking owner
+- `ADMIN` users can still create or update bookings on behalf of another identifier when needed
 - the referenced resource must exist
 - new and updated bookings cannot overlap for the same resource
 - only `PENDING` bookings can be edited
@@ -274,7 +346,7 @@ GET /api/bookings?resourceId=1&requesterId=student-1&status=PENDING
 
 | Method | URL | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/tickets` | Get all tickets with optional filters |
+| `GET` | `/api/tickets` | Get paged tickets with optional filters |
 | `GET` | `/api/tickets/{id}` | Get a single ticket by id |
 | `POST` | `/api/tickets` | Create a new maintenance/incident ticket |
 | `PUT` | `/api/tickets/{id}` | Update an open or in-progress ticket |
@@ -296,6 +368,12 @@ Example:
 GET /api/tickets?status=IN_PROGRESS&priority=HIGH&category=NETWORK&reportedBy=student-1
 ```
 
+Paging example:
+
+```http
+GET /api/tickets?assignedTechnician=dev-tech@smartcampus.local&page=0&size=10&sort=priority,asc
+```
+
 ## Sample ticket create request
 
 ```json
@@ -305,7 +383,6 @@ GET /api/tickets?status=IN_PROGRESS&priority=HIGH&category=NETWORK&reportedBy=st
   "category": "PLUMBING",
   "priority": "HIGH",
   "location": "Block A Entrance",
-  "reportedBy": "staff-1",
   "imageUrls": [
     "https://img.example.com/leak-1.jpg",
     "https://img.example.com/leak-2.jpg"
@@ -315,7 +392,10 @@ GET /api/tickets?status=IN_PROGRESS&priority=HIGH&category=NETWORK&reportedBy=st
 
 ## Ticket rules
 
-- title, description, location, and reportedBy are required
+- title, description, and location are required
+- authenticated `USER` requests default to the logged-in user as ticket reporter
+- `ADMIN` users can still register or edit a ticket on behalf of another identifier when needed
+- technician assignment now links to a real active `TECHNICIAN` user whenever an assignment is made
 - a maximum of 3 image URLs is allowed
 - only `OPEN` or `IN_PROGRESS` tickets can be updated
 - only `OPEN` or `IN_PROGRESS` tickets can be assigned or cancelled
@@ -329,16 +409,28 @@ GET /api/tickets?status=IN_PROGRESS&priority=HIGH&category=NETWORK&reportedBy=st
 - `RESOLVED -> IN_PROGRESS`
 - resolution notes are required when resolving a ticket
 
+Technician workflow:
+
+- `ADMIN` assigns tickets to a real `TECHNICIAN` user through `PATCH /api/tickets/{id}/assign`
+- assigned technicians can view tickets assigned to them
+- assigned technicians can move tickets through:
+  - `OPEN -> IN_PROGRESS`
+  - `IN_PROGRESS -> RESOLVED`
+  - `RESOLVED -> IN_PROGRESS`
+- reporting users can still edit or cancel their own tickets where allowed, but they cannot resolve or close tickets unless they are also the assigned technician or an admin
+
 ## Auth And Role Model
 
 Role model:
 
 - `USER`
+- `TECHNICIAN`
 - `ADMIN`
 
 Local development users from [src/main/resources/application.properties](src/main/resources/application.properties):
 
 - `dev-user@smartcampus.local` / `dev-user-pass`
+- `dev-tech@smartcampus.local` / `dev-tech-pass`
 - `dev-admin@smartcampus.local` / `dev-admin-pass`
 
 Google OAuth2 configuration keys supported by the app:
@@ -362,21 +454,37 @@ Google OAuth2 configuration keys supported by the app:
 
 | Method | URL | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/notifications` | Get the current user's notifications with optional filters |
-| `GET` | `/api/notifications/unread` | Get unread notifications for the current user |
+| `GET` | `/api/notifications` | Get paged notifications for the current user, or all notifications for `ADMIN` |
+| `GET` | `/api/notifications/unread` | Get paged unread notifications for the current user, or unread notifications for a selected inbox as `ADMIN` |
 | `PATCH` | `/api/notifications/{id}/read` | Mark one notification as read |
-| `PATCH` | `/api/notifications/read-all` | Mark all current-user notifications as read |
+| `PATCH` | `/api/notifications/read-all` | Mark all current-user notifications as read and return a summary payload |
 | `DELETE` | `/api/notifications/{id}` | Delete one notification |
 
 ### Notification filters
 
 - `unreadOnly`
 - `type`
+- `recipient` (`ADMIN` only, optional)
 
 Example:
 
 ```http
 GET /api/notifications?unreadOnly=true&type=BOOKING_APPROVED
+```
+
+Paging example:
+
+```http
+GET /api/notifications?unreadOnly=true&page=0&size=10&sort=createdAt,desc
+```
+
+Sample bulk read response:
+
+```json
+{
+  "message": "Notifications marked as read.",
+  "updatedCount": 3
+}
 ```
 
 ## Notification triggers
@@ -425,8 +533,29 @@ Admin only:
 - resource create, update, delete APIs
 - `PATCH /api/bookings/{id}/status`
 - `PATCH /api/tickets/{id}/assign`
+- `GET /api/audit-logs`
+- `GET /api/audit-logs/{entityType}/{entityId}`
+- `POST /api/admin/backfill/user-links`
 - `GET /api/users`
 - `PATCH /api/users/{id}/role`
+
+Technician-specific behavior:
+
+- technicians can read tickets assigned to them
+- technicians receive assignment and status-change notifications for their assigned tickets
+- technicians can update ticket status only for tickets assigned to them and only through the technician workflow above
+
+## Ownership model
+
+- bookings now keep both a legacy `requesterId` string and an optional linked `ownerUser`
+- tickets now keep both a legacy `reportedBy` string and an optional linked `reportedByUser`
+- tickets now also keep both a legacy `assignedTechnician` string and an optional linked `assignedTechnicianUser`
+- when an authenticated user creates a booking or ticket, the linked local `User` becomes the primary owner by default
+- normal users can only list, view, update, or cancel their own bookings and tickets
+- normal users can only read and manage their own notification inbox
+- admins can view and manage all bookings and tickets
+- technicians can view tickets assigned to them and progress assigned ticket statuses
+- admins can also inspect any notification inbox by using the optional `recipient` query parameter, or view all notifications when no recipient filter is supplied
 
 ## Sample role update request
 
@@ -436,13 +565,76 @@ Admin only:
 }
 ```
 
-## Remaining auth work
+## Compatibility notes
 
+- legacy bookings and tickets still preserve the old string fields (`requesterId`, `reportedBy`) so existing MySQL records are not broken
+- ticket assignments still preserve the old `assignedTechnician` string field so existing records remain readable during migration
+- if an older record only has a legacy identifier that does not match any local user email, ownership fallback stays string-based and that record is best managed by an admin during migration
+- older ticket assignments that point to a plain string and not a real `TECHNICIAN` user can still be read, but new assignments now require a real active technician account
+- the backfill endpoint links legacy string ownership or technician fields only when they match an existing local user email
+- legacy technician links are only backfilled to active `TECHNICIAN` users; non-technician matches are skipped safely
+- backfill summary counts each legacy link attempt that was scanned, linked, or skipped
 - browser-based OAuth login can be tested manually once real Google credentials are added
-- stricter ownership enforcement for bookings and tickets can now be built on top of the authenticated user identity
 
-## Notification limitations
+## Audit API
 
-- notifications are currently linked using the best available identifier strategy from existing modules
-- bookings and tickets still store requester/reporter identifiers as strings, so perfect ownership mapping is not fully enforced yet
-- if a booking requester or ticket reporter is not using the same identifier as the authenticated email, that notification may not appear in the authenticated inbox until ownership rules are tightened further
+| Method | URL | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/audit-logs` | Get paged audit logs with optional admin filters |
+| `GET` | `/api/audit-logs/{entityType}/{entityId}` | Get paged audit history for one entity (`ADMIN` only) |
+
+### Audit filters
+
+- `entityType`
+- `action`
+- `performedBy`
+- `from`
+- `to`
+
+Example:
+
+```http
+GET /api/audit-logs?entityType=TICKET&action=TICKET_STATUS_CHANGED&performedBy=admin@example.com
+```
+
+Paging example:
+
+```http
+GET /api/audit-logs?entityType=BOOKING&page=0&size=20&sort=createdAt,desc
+```
+
+## Audit events currently tracked
+
+- booking created
+- booking approved
+- booking rejected
+- booking cancelled
+- ticket created
+- ticket assigned
+- ticket status changed
+- user role changed
+- notification read-all
+- admin backfill execution
+
+## Admin backfill API
+
+| Method | URL | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/admin/backfill/user-links` | Scan legacy booking/ticket string identifiers and link them to matching local users (`ADMIN` only) |
+
+Backfill behavior:
+
+- links `Booking.requesterId -> ownerUser` when the string matches an existing user email
+- links `Ticket.reportedBy -> reportedByUser` when the string matches an existing user email
+- links `Ticket.assignedTechnician -> assignedTechnicianUser` only when the string matches an active `TECHNICIAN` user
+- does not overwrite or remove the legacy string fields
+- returns a summary with scanned, linked, and skipped counts plus per-area linked totals
+
+## Known remaining limitations
+
+- there is still no frontend dashboard or notification center in this repository
+- resource listing is intentionally kept as a simple public list/search API and is not paginated yet
+- ticket attachments are URL-based fields, not uploaded file storage
+- audit logs are queryable but do not yet support export, retention policies, or field-by-field diffs
+- legacy backfill is admin-triggered on demand, not scheduled automatically
+- full production OAuth rollout still depends on real Google Cloud credentials and consent-screen setup outside this repo

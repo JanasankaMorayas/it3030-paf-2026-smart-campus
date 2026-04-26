@@ -38,6 +38,10 @@ public class Booking {
     @JoinColumn(name = "resource_id", nullable = false)
     private Resource resource;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_user_id")
+    private User ownerUser;
+
     @Column(name = "requester_id", nullable = false, length = 100)
     private String requesterId;
 

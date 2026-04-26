@@ -2,6 +2,7 @@ package com.sliit.paf.smart_campus.repository;
 
 import com.sliit.paf.smart_campus.model.Booking;
 import com.sliit.paf.smart_campus.model.BookingStatus;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
 
@@ -26,6 +27,26 @@ public final class BookingSpecifications {
             return criteriaBuilder.equal(
                     criteriaBuilder.lower(root.get("requesterId")),
                     requesterId.trim().toLowerCase(Locale.ROOT)
+            );
+        };
+    }
+
+    public static Specification<Booking> hasOwnerIdentifier(String ownerIdentifier) {
+        return (root, query, criteriaBuilder) -> {
+            if (!StringUtils.hasText(ownerIdentifier)) {
+                return criteriaBuilder.conjunction();
+            }
+
+            String normalizedIdentifier = ownerIdentifier.trim().toLowerCase(Locale.ROOT);
+            return criteriaBuilder.or(
+                    criteriaBuilder.equal(
+                            criteriaBuilder.lower(root.get("requesterId")),
+                            normalizedIdentifier
+                    ),
+                    criteriaBuilder.equal(
+                            criteriaBuilder.lower(root.join("ownerUser", JoinType.LEFT).get("email")),
+                            normalizedIdentifier
+                    )
             );
         };
     }

@@ -2,6 +2,7 @@ package com.sliit.paf.smart_campus.repository;
 
 import com.sliit.paf.smart_campus.model.Notification;
 import com.sliit.paf.smart_campus.model.NotificationType;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
 
@@ -11,10 +12,23 @@ public final class NotificationSpecifications {
     }
 
     public static Specification<Notification> hasRecipient(String recipientIdentifier) {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(
-                criteriaBuilder.lower(root.get("recipientIdentifier")),
-                recipientIdentifier.toLowerCase()
-        );
+        return (root, query, criteriaBuilder) -> {
+            if (!StringUtils.hasText(recipientIdentifier)) {
+                return criteriaBuilder.conjunction();
+            }
+
+            String normalizedRecipient = recipientIdentifier.toLowerCase();
+            return criteriaBuilder.or(
+                    criteriaBuilder.equal(
+                            criteriaBuilder.lower(root.get("recipientIdentifier")),
+                            normalizedRecipient
+                    ),
+                    criteriaBuilder.equal(
+                            criteriaBuilder.lower(root.join("recipientUser", JoinType.LEFT).get("email")),
+                            normalizedRecipient
+                    )
+            );
+        };
     }
 
     public static Specification<Notification> hasUnreadOnly(Boolean unreadOnly) {

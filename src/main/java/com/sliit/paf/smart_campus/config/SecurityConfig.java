@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/error", "/login", "/login/**", "/oauth2/**", "/login/oauth2/**", "/oauth2/authorization/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/resources/**").permitAll()
                         .requestMatchers("/api/resources/**").hasRole("ADMIN")
+                        .requestMatchers("/api/audit-logs/**", "/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/notifications/**").authenticated()
                         .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
@@ -87,8 +88,15 @@ public class SecurityConfig {
                 .roles("USER")
                 .build();
 
+        UserDetails technicianUser = org.springframework.security.core.userdetails.User
+                .withUsername(securityProperties.getDevUsers().getTechnician().getEmail())
+                .password(passwordEncoder.encode(securityProperties.getDevUsers().getTechnician().getPassword()))
+                .roles("TECHNICIAN")
+                .build();
+
         manager.createUser(adminUser);
         manager.createUser(standardUser);
+        manager.createUser(technicianUser);
 
         return manager;
     }
