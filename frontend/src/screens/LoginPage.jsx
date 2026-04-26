@@ -76,15 +76,13 @@ export default function LoginPage() {
             </div>
             <p>
               This uses the backend OAuth flow at <strong>{api.auth.getApiBaseUrl()}</strong>. Open Google login,
-              complete the browser flow, then come back here and refresh the session.
+              complete the browser flow, and you should land back on this dashboard automatically.
             </p>
 
             <div className="stacked-actions">
               <a
                 className="button button--primary"
                 href={api.auth.getGoogleLoginUrl()}
-                target="_blank"
-                rel="noreferrer"
               >
                 Continue with Google
                 <ArrowRight size={16} />
@@ -97,7 +95,7 @@ export default function LoginPage() {
 
             <ul className="hint-list">
               <li>Backend must be running on `http://localhost:8080`.</li>
-              <li>Google sign-in opens in a new tab and the backend session cookie is reused here.</li>
+              <li>After Google sign-in, the backend redirects back to this frontend origin by default.</li>
               <li>If Google OAuth is not configured yet, use Basic Auth demo mode below.</li>
             </ul>
           </section>

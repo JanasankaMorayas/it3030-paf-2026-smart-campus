@@ -3,6 +3,12 @@ package com.sliit.paf.smart_campus.config;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.util.StringUtils;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -11,6 +17,16 @@ public class AppSecurityProperties {
 
     private DevUsersProperties devUsers = new DevUsersProperties();
     private OAuth2Properties oauth2 = new OAuth2Properties();
+    private List<String> devFrontendOrigins = new ArrayList<>(List.of(
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5174",
+            "http://localhost:4173",
+            "http://127.0.0.1:4173",
+            "http://localhost:4174",
+            "http://127.0.0.1:4174"
+    ));
 
     @Getter
     @Setter
@@ -53,7 +69,7 @@ public class AppSecurityProperties {
     @Getter
     @Setter
     public static class OAuth2Properties {
-        private String successRedirectUri = "/api/users/me";
+        private String successRedirectUri = "http://127.0.0.1:5173/";
         private GoogleProperties google = new GoogleProperties();
     }
 
@@ -65,5 +81,20 @@ public class AppSecurityProperties {
         private String clientName = "Google";
         private String redirectUri = "{baseUrl}/login/oauth2/code/{registrationId}";
         private String scope = "openid,profile,email";
+    }
+
+    public boolean isAllowedFrontendRedirectUri(String redirectUri) {
+        if (!StringUtils.hasText(redirectUri)) {
+            return false;
+        }
+
+        try {
+            URI candidateUri = new URI(redirectUri.trim());
+            String candidateOrigin = candidateUri.getScheme() + "://" + candidateUri.getHost()
+                    + (candidateUri.getPort() > 0 ? ":" + candidateUri.getPort() : "");
+            return devFrontendOrigins.contains(candidateOrigin);
+        } catch (URISyntaxException | IllegalArgumentException exception) {
+            return false;
+        }
     }
 }

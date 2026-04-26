@@ -1,4 +1,14 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+function resolveDefaultApiBaseUrl() {
+  if (typeof window === "undefined") {
+    return "http://localhost:8080";
+  }
+
+  return window.location.hostname === "127.0.0.1"
+    ? "http://127.0.0.1:8080"
+    : "http://localhost:8080";
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || resolveDefaultApiBaseUrl();
 const BASIC_AUTH_STORAGE_KEY = "smart-campus-basic-auth";
 
 function encodeBasicAuth({ username, password }) {
@@ -84,7 +94,19 @@ async function request(path, options = {}) {
     fetchOptions.body = JSON.stringify(body);
   }
 
-  const response = await fetch(buildUrl(path, params), fetchOptions);
+  let response;
+
+  try {
+    response = await fetch(buildUrl(path, params), fetchOptions);
+  } catch (error) {
+    throw {
+      status: 0,
+      error: "Network Error",
+      message: `Could not reach the backend at ${API_BASE_URL}. Make sure the Spring Boot app is running on http://localhost:8080 and that CORS allows ${window.location.origin}.`,
+      validationErrors: {},
+    };
+  }
+
   const payload = await parseResponse(response);
 
   if (!response.ok) {
@@ -117,7 +139,7 @@ const authApi = {
   },
 
   getGoogleLoginUrl() {
-    return `${API_BASE_URL}/oauth2/authorization/google`;
+    return buildUrl("/login", { redirect_uri: `${window.location.origin}/` });
   },
 
   getApiBaseUrl() {
