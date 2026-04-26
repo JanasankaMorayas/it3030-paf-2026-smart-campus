@@ -166,7 +166,7 @@ Mapped app properties:
 
 Optional app-level setting:
 
-- `app.security.oauth2.success-redirect-uri=/api/users/me`
+- `app.security.oauth2.success-redirect-uri=${FRONTEND_BASE_URL:http://127.0.0.1:5173/}`
 
 PowerShell example:
 
@@ -174,6 +174,12 @@ PowerShell example:
 $env:GOOGLE_CLIENT_ID="your-google-client-id"
 $env:GOOGLE_CLIENT_SECRET="your-google-client-secret"
 .\mvnw spring-boot:run
+```
+
+Optional fallback frontend redirect:
+
+```powershell
+$env:FRONTEND_BASE_URL="http://127.0.0.1:5173/"
 ```
 
 After startup, open this URL in a browser to begin login:
@@ -190,7 +196,8 @@ http://localhost:8080/login
 
 to use Spring Security's generated OAuth login page when Google client registration is present.
 
-On successful login, Spring Security redirects to `/api/users/me`, and the Google user is created or updated in the local `users` table with a safe default role of `USER`.
+On successful login, the Google user is created or updated in the local `users` table with a safe default role of `USER`.
+When OAuth is started from the React login screen, the backend now remembers the current frontend origin and redirects back to the dashboard automatically after Google sign-in. The configured `success-redirect-uri` only acts as the fallback target when OAuth is started directly from the backend.
 
 If Google credentials are not configured, local basic auth still works for protected endpoints during development.
 
@@ -214,6 +221,12 @@ If Google credentials are not configured, local basic auth still works for prote
 
 ```text
 http://localhost:8080/login/oauth2/code/google
+```
+
+If you also run the frontend/backend flow through `127.0.0.1`, add this too:
+
+```text
+http://127.0.0.1:8080/login/oauth2/code/google
 ```
 
 13. Save the client and copy:
@@ -442,6 +455,15 @@ Google OAuth2 configuration keys supported by the app:
 - `app.security.oauth2.google.client-name`
 - `app.security.oauth2.success-redirect-uri`
 
+Frontend demo flow:
+
+- start the backend with `.\mvnw spring-boot:run`
+- start the frontend with `npm run dev:5173` from `frontend/`
+- open the React login page
+- click `Continue with Google`
+- complete Google sign-in
+- expect the browser to return to the React dashboard automatically
+
 ## User API
 
 | Method | URL | Purpose |
@@ -632,7 +654,7 @@ Backfill behavior:
 
 ## Known remaining limitations
 
-- there is still no frontend dashboard or notification center in this repository
+- the React frontend now lives under `frontend/`, but production deployment setup is still out of scope
 - resource listing is intentionally kept as a simple public list/search API and is not paginated yet
 - ticket attachments are URL-based fields, not uploaded file storage
 - audit logs are queryable but do not yet support export, retention policies, or field-by-field diffs

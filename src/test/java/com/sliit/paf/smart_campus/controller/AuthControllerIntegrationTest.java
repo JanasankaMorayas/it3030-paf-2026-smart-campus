@@ -24,6 +24,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.googleOauthConfigured").value(false))
                 .andExpect(jsonPath("$.message").value("Google OAuth2 login is not configured yet."))
                 .andExpect(jsonPath("$.expectedRedirectUri").value("http://localhost:8080/login/oauth2/code/google"))
+                .andExpect(jsonPath("$.expectedAlternateRedirectUri").value("http://127.0.0.1:8080/login/oauth2/code/google"))
                 .andExpect(jsonPath("$.successRedirectUri").value("http://127.0.0.1:5173/"));
     }
 

@@ -1,48 +1,38 @@
 package com.sliit.paf.smart_campus.config;
 
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
 
 @Component
 public class OAuth2AuthenticationSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
 
-    public static final String REDIRECT_URI_SESSION_ATTRIBUTE = "oauth2_success_redirect_uri";
-    private final String fallbackRedirectUri;
+    public static final String REDIRECT_URI_SESSION_ATTRIBUTE = "smartCampus.oauth2SuccessRedirectUri";
+
+    private final AppSecurityProperties securityProperties;
 
     public OAuth2AuthenticationSuccessHandler(AppSecurityProperties securityProperties) {
-        this.fallbackRedirectUri = securityProperties.getOauth2().getSuccessRedirectUri();
-        setDefaultTargetUrl(fallbackRedirectUri);
+        this.securityProperties = securityProperties;
+        setDefaultTargetUrl(securityProperties.getOauth2().getSuccessRedirectUri());
         setAlwaysUseDefaultTargetUrl(true);
     }
 
     @Override
-    public void onAuthenticationSuccess(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            org.springframework.security.core.Authentication authentication
-    ) throws IOException, ServletException {
-        super.onAuthenticationSuccess(request, response, authentication);
+    protected String determineTargetUrl(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            Object redirectTarget = session.getAttribute(REDIRECT_URI_SESSION_ATTRIBUTE);
+            session.removeAttribute(REDIRECT_URI_SESSION_ATTRIBUTE);
 
-        if (request.getSession(false) != null) {
-            request.getSession(false).removeAttribute(REDIRECT_URI_SESSION_ATTRIBUTE);
-        }
-    }
-
-    @Override
-    protected String determineTargetUrl(HttpServletRequest request, HttpServletResponse response) {
-        Object redirectUri = request.getSession(false) != null
-                ? request.getSession(false).getAttribute(REDIRECT_URI_SESSION_ATTRIBUTE)
-                : null;
-
-        if (redirectUri instanceof String targetUrl && !targetUrl.isBlank()) {
-            return targetUrl;
+            if (redirectTarget instanceof String redirectUri
+                    && securityProperties.isAllowedFrontendRedirectUri(redirectUri)) {
+                return redirectUri;
+            }
         }
 
-        return fallbackRedirectUri;
+        return securityProperties.getOauth2().getSuccessRedirectUri();
     }
 }

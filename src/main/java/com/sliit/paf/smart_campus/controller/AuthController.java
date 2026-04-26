@@ -2,21 +2,20 @@ package com.sliit.paf.smart_campus.controller;
 
 import com.sliit.paf.smart_campus.config.AppSecurityProperties;
 import com.sliit.paf.smart_campus.config.OAuth2AuthenticationSuccessHandler;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 @RestController
 public class AuthController {
@@ -34,13 +33,25 @@ public class AuthController {
 
     @GetMapping("/login")
     public ResponseEntity<?> login(
-            @RequestParam(name = "redirect_uri", required = false) String redirectUri,
-            HttpSession session
+            @RequestParam(value = "redirect_uri", required = false) String redirectUri,
+            HttpServletRequest request
     ) {
         String resolvedRedirectUri = resolveRedirectUri(redirectUri);
 
-        if (isGoogleOauthConfigured()) {
-            session.setAttribute(OAuth2AuthenticationSuccessHandler.REDIRECT_URI_SESSION_ATTRIBUTE, resolvedRedirectUri);
+        if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
+            if (StringUtils.hasText(redirectUri) && !securityProperties.isAllowedFrontendRedirectUri(redirectUri)) {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("message", "Unsupported frontend redirect URI.");
+                body.put("redirectUri", redirectUri);
+                body.put("allowedFrontendOrigins", securityProperties.getDevFrontendOrigins());
+                return ResponseEntity.badRequest().body(body);
+            }
+
+            request.getSession(true).setAttribute(
+                    OAuth2AuthenticationSuccessHandler.REDIRECT_URI_SESSION_ATTRIBUTE,
+                    resolvedRedirectUri
+            );
+
             HttpHeaders headers = new HttpHeaders();
             headers.setLocation(URI.create("/oauth2/authorization/google"));
             return new ResponseEntity<>(headers, HttpStatus.FOUND);
@@ -58,22 +69,13 @@ public class AuthController {
     }
 
     private String resolveRedirectUri(String requestedRedirectUri) {
-        if (requestedRedirectUri == null || requestedRedirectUri.isBlank()) {
+        if (!StringUtils.hasText(requestedRedirectUri)) {
             return securityProperties.getOauth2().getSuccessRedirectUri();
         }
 
-        try {
-            URI redirectUri = URI.create(requestedRedirectUri);
-            String origin = redirectUri.getScheme() + "://" + redirectUri.getAuthority();
-            Set<String> allowedOrigins = new HashSet<>(securityProperties.getAllowedFrontendOrigins());
-            if (allowedOrigins.contains(origin)) {
-                return requestedRedirectUri;
-            }
-        } catch (IllegalArgumentException ignored) {
-            // Fall back to the default configured redirect target below.
-        }
-
-        return securityProperties.getOauth2().getSuccessRedirectUri();
+        return securityProperties.isAllowedFrontendRedirectUri(requestedRedirectUri)
+                ? requestedRedirectUri
+                : securityProperties.getOauth2().getSuccessRedirectUri();
     }
 
     private boolean isGoogleOauthConfigured() {
@@ -88,8 +90,9 @@ public class AuthController {
                 : "Google OAuth2 login is not configured yet.");
         body.put("requiredEnvironmentVariables", new String[]{"GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"});
         body.put("expectedRedirectUri", "http://localhost:8080/login/oauth2/code/google");
+        body.put("expectedAlternateRedirectUri", "http://127.0.0.1:8080/login/oauth2/code/google");
         body.put("successRedirectUri", resolvedRedirectUri);
-        body.put("allowedFrontendOrigins", securityProperties.getAllowedFrontendOrigins());
+        body.put("allowedFrontendOrigins", securityProperties.getDevFrontendOrigins());
         return body;
     }
 }
