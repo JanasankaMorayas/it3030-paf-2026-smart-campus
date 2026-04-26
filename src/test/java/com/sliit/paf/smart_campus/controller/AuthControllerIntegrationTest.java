@@ -27,4 +27,12 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.expectedAlternateRedirectUri").value("http://127.0.0.1:8080/login/oauth2/code/google"))
                 .andExpect(jsonPath("$.successRedirectUri").value("http://127.0.0.1:5173/"));
     }
+
+    @Test
+    void authStatus_shouldExposeGoogleConfigurationState() throws Exception {
+        mockMvc.perform(get("/api/auth/status").param("redirect_uri", "http://127.0.0.1:5174/"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.googleOauthConfigured").value(false))
+                .andExpect(jsonPath("$.successRedirectUri").value("http://127.0.0.1:5174/"));
+    }
 }

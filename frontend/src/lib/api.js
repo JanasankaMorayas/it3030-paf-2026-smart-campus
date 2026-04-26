@@ -1,15 +1,22 @@
-function resolveDefaultApiBaseUrl() {
-  if (typeof window === "undefined") {
-    return "http://localhost:8080";
+const BASIC_AUTH_STORAGE_KEY = "smart-campus-basic-auth";
+const DEFAULT_BACKEND_HOST = "localhost:8080";
+
+function resolveApiBaseUrl() {
+  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
   }
 
-  return window.location.hostname === "127.0.0.1"
-    ? "http://127.0.0.1:8080"
-    : "http://localhost:8080";
+  if (typeof window === "undefined") {
+    return `http://${DEFAULT_BACKEND_HOST}`;
+  }
+
+  const frontendHost = window.location.hostname;
+  const backendHost = frontendHost === "127.0.0.1" ? "127.0.0.1:8080" : DEFAULT_BACKEND_HOST;
+  return `${window.location.protocol}//${backendHost}`;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || resolveDefaultApiBaseUrl();
-const BASIC_AUTH_STORAGE_KEY = "smart-campus-basic-auth";
+const API_BASE_URL = resolveApiBaseUrl();
 
 function encodeBasicAuth({ username, password }) {
   return `Basic ${btoa(`${username}:${password}`)}`;
@@ -64,6 +71,17 @@ function normalizeError(response, payload) {
   };
 }
 
+function createNetworkError(error) {
+  return {
+    status: 0,
+    error: "NetworkError",
+    message: error instanceof TypeError
+      ? `Could not reach the backend at ${API_BASE_URL}. Check that Spring Boot is running and the current frontend origin is allowed by CORS.`
+      : "A network error interrupted the request.",
+    validationErrors: {},
+  };
+}
+
 async function request(path, options = {}) {
   const {
     method = "GET",
@@ -95,16 +113,10 @@ async function request(path, options = {}) {
   }
 
   let response;
-
   try {
     response = await fetch(buildUrl(path, params), fetchOptions);
   } catch (error) {
-    throw {
-      status: 0,
-      error: "Network Error",
-      message: `Could not reach the backend at ${API_BASE_URL}. Make sure the Spring Boot app is running on http://localhost:8080 and that CORS allows ${window.location.origin}.`,
-      validationErrors: {},
-    };
+    throw createNetworkError(error);
   }
 
   const payload = await parseResponse(response);
@@ -134,12 +146,18 @@ const authApi = {
     return request("/api/users/me", { basicAuth });
   },
 
+  async getStatus() {
+    const redirectTarget = typeof window !== "undefined" ? `${window.location.origin}/` : "/";
+    return request("/api/auth/status", { params: { redirect_uri: redirectTarget } });
+  },
+
   async logout({ basicAuth } = {}) {
     return request("/logout", { method: "POST", basicAuth });
   },
 
   getGoogleLoginUrl() {
-    return buildUrl("/login", { redirect_uri: `${window.location.origin}/` });
+    const redirectTarget = typeof window !== "undefined" ? `${window.location.origin}/` : "/";
+    return buildUrl("/login", { redirect_uri: redirectTarget });
   },
 
   getApiBaseUrl() {

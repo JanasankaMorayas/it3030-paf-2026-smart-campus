@@ -1,5 +1,6 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import AppLayout from "./components/AppLayout.jsx";
+import LoadingState from "./components/LoadingState.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import AuditPage from "./screens/AuditPage.jsx";
 import BookingsPage from "./screens/BookingsPage.jsx";
@@ -15,8 +16,7 @@ function FullScreenMessage({ title, message }) {
     <div className="auth-screen auth-screen--centered">
       <div className="auth-panel">
         <p className="eyebrow">Smart Campus Operations Hub</p>
-        <h1>{title}</h1>
-        <p className="panel-description">{message}</p>
+        <LoadingState title={title} message={message} compact />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 export function formatDateTime(value) {
   if (!value) {
-    return "—";
+    return "-";
   }
 
   return new Intl.DateTimeFormat("en-LK", {
@@ -11,7 +11,7 @@ export function formatDateTime(value) {
 
 export function formatCompactDateTime(value) {
   if (!value) {
-    return "—";
+    return "-";
   }
 
   return new Intl.DateTimeFormat("en-LK", {
@@ -22,9 +22,21 @@ export function formatCompactDateTime(value) {
   }).format(new Date(value));
 }
 
+export function formatShortDate(value) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("en-LK", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 export function formatDateRange(startValue, endValue) {
   if (!startValue || !endValue) {
-    return "—";
+    return "-";
   }
 
   return `${formatCompactDateTime(startValue)} - ${formatCompactDateTime(endValue)}`;
@@ -40,7 +52,7 @@ export function toDateTimeLocalValue(value) {
 
 export function titleizeEnum(value) {
   if (!value) {
-    return "—";
+    return "-";
   }
 
   return String(value)
@@ -59,4 +71,15 @@ export function parseMultilineList(value) {
 
 export function joinMultilineList(values) {
   return Array.isArray(values) ? values.join("\n") : "";
+}
+
+export function compactCount(value) {
+  if (value === undefined || value === null) {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("en", {
+    notation: value > 999 ? "compact" : "standard",
+    maximumFractionDigits: 1,
+  }).format(value);
 }

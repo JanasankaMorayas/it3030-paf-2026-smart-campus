@@ -1,10 +1,17 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Boxes, Pencil, Plus, Trash2, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
+import DataToolbar from "../components/DataToolbar.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 import FeedbackBanner from "../components/FeedbackBanner.jsx";
+import LoadingState from "../components/LoadingState.jsx";
 import Modal from "../components/Modal.jsx";
+import PageShell from "../components/PageShell.jsx";
+import SectionCard from "../components/SectionCard.jsx";
+import StatCard from "../components/StatCard.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { formatDateRange, toDateTimeLocalValue, titleizeEnum } from "../lib/format.js";
+import { compactCount, formatDateRange, toDateTimeLocalValue, titleizeEnum } from "../lib/format.js";
 import { RESOURCE_STATUSES, RESOURCE_TYPES } from "../lib/options.js";
 import { api } from "../lib/api.js";
 
@@ -38,6 +45,7 @@ export default function ResourcesPage() {
   const [formState, setFormState] = useState(initialForm);
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resourceToDelete, setResourceToDelete] = useState(null);
 
   async function loadResources(activeFilters = filters) {
     setLoading(true);
@@ -109,36 +117,65 @@ export default function ResourcesPage() {
     }
   }
 
-  async function handleDelete(resourceId) {
-    if (!window.confirm("Delete this resource?")) {
+  async function handleDeleteConfirmed() {
+    if (!resourceToDelete) {
       return;
     }
 
     try {
-      await api.resources.remove(resourceId);
+      await api.resources.remove(resourceToDelete.id);
+      setResourceToDelete(null);
       await loadResources();
     } catch (deleteError) {
       setError(deleteError);
     }
   }
 
+  const activeCount = resources.filter((resource) => resource.status === "ACTIVE").length;
+  const offlineCount = resources.filter((resource) => resource.status === "OUT_OF_SERVICE").length;
+  const labCount = resources.filter((resource) => resource.type === "LAB").length;
+
   return (
-    <div className="page-stack">
-      <section className="page-header">
-        <div>
-          <p className="eyebrow">Module A</p>
-          <h2>Resources</h2>
-          <p>Manage the campus resource catalogue, availability windows, and operations status.</p>
-        </div>
-        {isAdmin ? (
+    <PageShell
+      eyebrow="Module A"
+      title="Resource operations"
+      description="Keep the campus catalogue clean, searchable, and ready for booking and maintenance workflows."
+      actions={isAdmin ? (
+        <div className="stacked-actions">
+          <button type="button" className="button button--ghost" onClick={() => void loadResources()}>
+            Refresh catalogue
+          </button>
           <button type="button" className="button button--primary" onClick={openCreate}>
             <Plus size={16} />
             Create resource
           </button>
-        ) : null}
+        </div>
+      ) : (
+        <button type="button" className="button button--ghost" onClick={() => void loadResources()}>
+          Refresh catalogue
+        </button>
+      )}
+      meta={(
+        <>
+          <StatusBadge value={isAdmin ? "ADMIN" : "USER"} variant="general" />
+          <span className="page-shell__meta-text">
+            {isAdmin ? "Write access is live for resource operations." : "You have read-only access to the public resource catalogue."}
+          </span>
+        </>
+      )}
+    >
+      <section className="dashboard-stat-grid dashboard-stat-grid--compact">
+        <StatCard icon={Boxes} label="Visible resources" value={loading ? "..." : compactCount(resources.length)} hint="Filtered catalogue count" tone="teal" />
+        <StatCard icon={Boxes} label="Active" value={loading ? "..." : compactCount(activeCount)} hint="Ready for usage and bookings" tone="cream" />
+        <StatCard icon={Wrench} label="Out of service" value={loading ? "..." : compactCount(offlineCount)} hint="Temporarily unavailable assets" tone="sand" />
+        <StatCard icon={Boxes} label="Labs" value={loading ? "..." : compactCount(labCount)} hint="Spaces configured as labs" tone="teal" />
       </section>
 
-      <section className="panel">
+      <DataToolbar
+        eyebrow="Catalogue filters"
+        title="Search the resource inventory"
+        description="Narrow the public catalogue by type, location, capacity, or operating status."
+      >
         <form
           className="filters-grid"
           onSubmit={(event) => {
@@ -174,6 +211,7 @@ export default function ResourcesPage() {
               min="1"
               value={filters.minCapacity}
               onChange={(event) => setFilters((current) => ({ ...current, minCapacity: event.target.value }))}
+              placeholder="40"
             />
           </label>
 
@@ -190,7 +228,7 @@ export default function ResourcesPage() {
           </label>
 
           <div className="filter-actions">
-            <button type="submit" className="button button--ghost">
+            <button type="submit" className="button button--primary">
               Apply filters
             </button>
             <button
@@ -205,19 +243,18 @@ export default function ResourcesPage() {
             </button>
           </div>
         </form>
-      </section>
+      </DataToolbar>
 
       <FeedbackBanner error={error} />
 
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <p className="eyebrow">Catalogue</p>
-            <h3>{loading ? "Loading resources..." : `${resources.length} resources found`}</h3>
-          </div>
-        </div>
-
-        {resources.length ? (
+      <SectionCard
+        eyebrow="Catalogue board"
+        title={loading ? "Loading resources" : `${resources.length} resources in view`}
+        description="Operational overview of spaces and assets available to the campus workflow."
+      >
+        {loading ? (
+          <LoadingState title="Loading resource catalogue" message="Fetching the latest campus inventory." lines={5} />
+        ) : resources.length ? (
           <div className="table-wrapper">
             <table className="data-table">
               <thead>
@@ -235,12 +272,16 @@ export default function ResourcesPage() {
               <tbody>
                 {resources.map((resource) => (
                   <tr key={resource.id}>
-                    <td>{resource.resourceCode}</td>
+                    <td>
+                      <strong>{resource.resourceCode}</strong>
+                    </td>
                     <td>
                       <strong>{resource.name}</strong>
-                      <p className="table-subtext">{resource.description || "No description"}</p>
+                      <p className="table-subtext">{resource.description || "No description recorded yet."}</p>
                     </td>
-                    <td>{titleizeEnum(resource.type)}</td>
+                    <td>
+                      <StatusBadge value={resource.type} />
+                    </td>
                     <td>{resource.capacity}</td>
                     <td>{resource.location}</td>
                     <td>{formatDateRange(resource.availabilityStart, resource.availabilityEnd)}</td>
@@ -256,7 +297,7 @@ export default function ResourcesPage() {
                           <button
                             type="button"
                             className="icon-button icon-button--danger"
-                            onClick={() => void handleDelete(resource.id)}
+                            onClick={() => setResourceToDelete(resource)}
                             aria-label="Delete resource"
                           >
                             <Trash2 size={16} />
@@ -270,14 +311,29 @@ export default function ResourcesPage() {
             </table>
           </div>
         ) : (
-          <div className="empty-state">No resources matched the current filters.</div>
+          <EmptyState
+            title="No resources matched"
+            message="Try widening the filters or reset the search to view the full catalogue."
+            action={(
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => {
+                  setFilters(initialFilters);
+                  void loadResources(initialFilters);
+                }}
+              >
+                Reset filters
+              </button>
+            )}
+          />
         )}
-      </section>
+      </SectionCard>
 
       <Modal
         isOpen={modalOpen}
         title={editingResource ? "Edit resource" : "Create resource"}
-        subtitle="Resource writes require admin access."
+        subtitle="Resource writes are admin-controlled and feed the shared operations catalogue."
         onClose={() => setModalOpen(false)}
       >
         <form className="form-grid" onSubmit={handleSubmit}>
@@ -354,6 +410,15 @@ export default function ResourcesPage() {
           </div>
         </form>
       </Modal>
-    </div>
+
+      <ConfirmDialog
+        open={Boolean(resourceToDelete)}
+        title="Delete resource"
+        message={resourceToDelete ? `Delete ${resourceToDelete.resourceCode} - ${resourceToDelete.name}? This removes it from the catalogue.` : ""}
+        confirmLabel="Delete resource"
+        onConfirm={handleDeleteConfirmed}
+        onClose={() => setResourceToDelete(null)}
+      />
+    </PageShell>
   );
 }
