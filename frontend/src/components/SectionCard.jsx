@@ -9,10 +9,11 @@ export default function SectionCard({
   actions,
   footer,
   className,
+  tone = "default",
   children,
 }) {
   return (
-    <section className={joinClasses("section-card", className)}>
+    <section className={joinClasses("section-card", `section-card--${tone}`, className)}>
       {eyebrow || title || description || actions ? (
         <div className="section-card__header">
           <div className="section-card__heading">

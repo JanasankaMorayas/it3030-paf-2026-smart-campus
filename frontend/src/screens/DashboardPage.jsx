@@ -3,12 +3,12 @@ import {
   Boxes,
   CalendarRange,
   Clock3,
-  ScrollText,
+  ExternalLink,
   Shield,
   Sparkles,
   Wrench,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import EmptyState from "../components/EmptyState.jsx";
 import FeedbackBanner from "../components/FeedbackBanner.jsx";
@@ -24,32 +24,59 @@ import { api } from "../lib/api.js";
 function deriveRoleFocus({ isAdmin, isTechnician }) {
   if (isAdmin) {
     return {
-      title: "Admin command posture",
-      message: "You can review approvals, assignments, role changes, audits, and legacy cleanup from one desk.",
-      actionLabel: "Open audit lane",
+      title: "Administrative command lane",
+      message: "Oversee approvals, assignments, role control, audit history, and legacy support from one portal home.",
+      actionLabel: "Open audit workbench",
       actionHref: "/audit",
+      quickLinks: [
+        { label: "Review users", href: "/users" },
+        { label: "Audit logs", href: "/audit" },
+        { label: "Ticket desk", href: "/tickets" },
+      ],
     };
   }
 
   if (isTechnician) {
     return {
-      title: "Technician workload",
-      message: "Stay focused on assigned incidents, ticket transitions, and unread alerts tied to active work.",
-      actionLabel: "Open ticket queue",
+      title: "Technician service lane",
+      message: "Focus on assigned tickets, active maintenance status changes, and unread operational follow-up.",
+      actionLabel: "Open ticket desk",
       actionHref: "/tickets",
+      quickLinks: [
+        { label: "Assigned tickets", href: "/tickets" },
+        { label: "Notification inbox", href: "/notifications" },
+        { label: "Resource catalogue", href: "/resources" },
+      ],
     };
   }
 
   return {
-    title: "User self-service lane",
-    message: "Track your requests, report issues quickly, and follow notifications without leaving the dashboard.",
+    title: "Self-service campus lane",
+    message: "Keep your bookings, issue reports, and notification follow-up visible from one clean home screen.",
     actionLabel: "Open bookings",
     actionHref: "/bookings",
+    quickLinks: [
+      { label: "Create booking", href: "/bookings" },
+      { label: "Report issue", href: "/tickets" },
+      { label: "Browse resources", href: "/resources" },
+    ],
   };
 }
 
+function describeNotificationPressure(total) {
+  if (!total) {
+    return "Inbox is calm right now.";
+  }
+
+  if (total >= 5) {
+    return "Unread notifications need active follow-up.";
+  }
+
+  return "A few operational reminders are waiting.";
+}
+
 export default function DashboardPage() {
-  const { currentUser, isAdmin, isTechnician } = useAuth();
+  const { currentUser, isAdmin, isTechnician, authMode } = useAuth();
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,10 +88,10 @@ export default function DashboardPage() {
     try {
       const [resources, bookings, tickets, notifications, auditLogs] = await Promise.allSettled([
         api.resources.list(),
-        api.bookings.list({ page: 0, size: 5, sort: "createdAt,desc" }),
-        api.tickets.list({ page: 0, size: 5, sort: "createdAt,desc" }),
-        api.notifications.unread({ page: 0, size: 5, sort: "createdAt,desc" }),
-        isAdmin ? api.audit.list({ page: 0, size: 5, sort: "createdAt,desc" }) : Promise.resolve(null),
+        api.bookings.list({ page: 0, size: 6, sort: "createdAt,desc" }),
+        api.tickets.list({ page: 0, size: 6, sort: "createdAt,desc" }),
+        api.notifications.list({ page: 0, size: 6, sort: "createdAt,desc" }),
+        isAdmin ? api.audit.list({ page: 0, size: 6, sort: "createdAt,desc" }) : Promise.resolve(null),
       ]);
 
       setSnapshot({
@@ -92,20 +119,110 @@ export default function DashboardPage() {
   const auditRows = snapshot?.auditLogs?.content || [];
 
   const activeResources = resources.filter((resource) => resource.status === "ACTIVE").length;
-  const outOfServiceResources = resources.filter((resource) => resource.status === "OUT_OF_SERVICE").length;
   const pendingBookings = bookings.filter((booking) => booking.status === "PENDING").length;
-  const resolvedTickets = tickets.filter((ticket) => ticket.status === "RESOLVED").length;
+  const ticketPressure = tickets.filter((ticket) => ticket.status !== "CLOSED" && ticket.status !== "RESOLVED").length;
+  const unreadNotifications = notifications.filter((notification) => !notification.isRead).length;
   const roleFocus = deriveRoleFocus({ isAdmin, isTechnician });
+
+  const operationalAlerts = useMemo(() => {
+    const alerts = [];
+
+    if (pendingBookings > 0) {
+      alerts.push({
+        tone: "warning",
+        title: `${pendingBookings} booking request${pendingBookings === 1 ? "" : "s"} waiting`,
+        message: isAdmin
+          ? "Approvals are sitting in the queue and may need attention soon."
+          : "Your visible booking queue still has pending decisions.",
+      });
+    }
+
+    if (ticketPressure > 0) {
+      alerts.push({
+        tone: "danger",
+        title: `${ticketPressure} active ticket${ticketPressure === 1 ? "" : "s"} in motion`,
+        message: isTechnician
+          ? "Assigned maintenance work is still active in your current view."
+          : "Incident resolution work remains active across the service desk.",
+      });
+    }
+
+    if (unreadNotifications > 0) {
+      alerts.push({
+        tone: "info",
+        title: `${unreadNotifications} unread notification${unreadNotifications === 1 ? "" : "s"}`,
+        message: describeNotificationPressure(unreadNotifications),
+      });
+    }
+
+    if (!alerts.length) {
+      alerts.push({
+        tone: "success",
+        title: "Operations look stable",
+        message: "No urgent queue spikes are visible in this portal snapshot.",
+      });
+    }
+
+    return alerts.slice(0, 3);
+  }, [isAdmin, isTechnician, pendingBookings, ticketPressure, unreadNotifications]);
+
+  const activityTimeline = useMemo(() => {
+    const items = [
+      ...bookings.map((booking) => ({
+        id: `booking-${booking.id}`,
+        type: "Booking",
+        tone: "booking",
+        title: booking.resourceName || booking.purpose || "Booking activity",
+        summary: `${booking.status} · ${booking.ownerDisplayName || booking.ownerEmail || "Campus user"}`,
+        detail: formatDateRange(booking.startTime, booking.endTime),
+        createdAt: booking.updatedAt || booking.createdAt || booking.startTime,
+      })),
+      ...tickets.map((ticket) => ({
+        id: `ticket-${ticket.id}`,
+        type: "Ticket",
+        tone: "ticket",
+        title: ticket.title,
+        summary: `${ticket.status} · ${ticket.priority}`,
+        detail: ticket.location,
+        createdAt: ticket.updatedAt || ticket.createdAt,
+      })),
+      ...notifications.map((notification) => ({
+        id: `notification-${notification.id}`,
+        type: "Notification",
+        tone: "notification",
+        title: notification.title,
+        summary: notification.type,
+        detail: notification.message,
+        createdAt: notification.createdAt,
+      })),
+      ...auditRows.map((row) => ({
+        id: `audit-${row.id}`,
+        type: "Audit",
+        tone: "audit",
+        title: row.action,
+        summary: row.entityType,
+        detail: row.details || row.performedByEmail || row.performedByIdentifier || "System action",
+        createdAt: row.createdAt,
+      })),
+    ];
+
+    return items
+      .filter((item) => item.createdAt)
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+      .slice(0, 8);
+  }, [auditRows, bookings, notifications, tickets]);
+
+  const firstName = currentUser?.displayName?.split(" ")?.[0] || "there";
 
   return (
     <PageShell
-      eyebrow="Operations cockpit"
-      title="Smart Campus control desk"
-      description="Live visibility into resource readiness, booking workflow, maintenance workload, notifications, and admin oversight."
+      eyebrow="Campus portal home"
+      title={`Welcome back, ${firstName}`}
+      description="Use this portal home to move between operational modules quickly, understand current queue pressure, and pick the next action that matters."
       actions={(
         <div className="stacked-actions">
           <button type="button" className="button button--ghost" onClick={() => void loadDashboard()}>
-            Refresh cockpit
+            Refresh portal
           </button>
           <Link className="button button--primary" to={roleFocus.actionHref}>
             {roleFocus.actionLabel}
@@ -115,83 +232,262 @@ export default function DashboardPage() {
       meta={(
         <>
           <StatusBadge value={currentUser?.role} />
-          <span className="page-shell__meta-text">{roleFocus.message}</span>
+          <span className="page-shell__meta-text">{authMode === "basic" ? "Basic Auth demo session" : "Google-authenticated portal session"}</span>
         </>
       )}
     >
       <FeedbackBanner error={error} />
 
-      <section className="dashboard-stat-grid">
+      <section className="portal-home-grid">
+        <SectionCard
+          tone="hero"
+          eyebrow="Today at a glance"
+          title="Your operations workspace"
+          description={roleFocus.message}
+          className="portal-home-grid__hero"
+          actions={(
+            <div className="stacked-actions">
+              {roleFocus.quickLinks.map((link) => (
+                <Link key={link.href + link.label} className="button button--subtle" to={link.href}>
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        >
+          <div className="portal-hero">
+            <div className="portal-hero__metrics">
+              <div className="portal-hero__metric">
+                <span>Resources ready</span>
+                <strong>{loading ? "..." : compactCount(activeResources)}</strong>
+              </div>
+              <div className="portal-hero__metric">
+                <span>Pending bookings</span>
+                <strong>{loading ? "..." : compactCount(pendingBookings)}</strong>
+              </div>
+              <div className="portal-hero__metric">
+                <span>Active tickets</span>
+                <strong>{loading ? "..." : compactCount(ticketPressure)}</strong>
+              </div>
+            </div>
+
+            <div className="portal-hero__panel">
+              <span className="portal-hero__eyebrow">Session posture</span>
+              <strong>{currentUser?.displayName || currentUser?.email}</strong>
+              <p>{isAdmin ? "Administrative control is active." : isTechnician ? "Technician workflow access is active." : "Self-service workspace access is active."}</p>
+              <div className="portal-hero__chips">
+                <StatusBadge value={currentUser?.role} />
+                <span className="portal-chip">{authMode === "basic" ? "Basic Auth" : "Google OAuth"}</span>
+                <span className="portal-chip">Backend live</span>
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          tone="soft"
+          eyebrow="Announcements and alerts"
+          title="Operational focus"
+          description="Short prompts that help the current role decide what to do next."
+          className="portal-home-grid__announcements"
+        >
+          <div className="announcement-stack">
+            {operationalAlerts.map((alert) => (
+              <article key={alert.title} className={`announcement-card announcement-card--${alert.tone}`}>
+                <strong>{alert.title}</strong>
+                <p>{alert.message}</p>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
+      </section>
+
+      <section className="dashboard-stat-grid dashboard-stat-grid--portal">
         <StatCard
           icon={Boxes}
           label="Resources"
           value={loading ? "..." : compactCount(resources.length)}
-          hint={loading ? "Syncing public catalogue" : `${activeResources} active, ${outOfServiceResources} unavailable`}
+          hint={`${activeResources} ready for campus use`}
+          trend="Catalogue module"
           tone="teal"
         />
         <StatCard
           icon={CalendarRange}
-          label="Bookings in scope"
+          label="Bookings"
           value={loading ? "..." : compactCount(snapshot?.bookings?.totalElements ?? 0)}
-          hint={loading ? "Checking reservation flow" : `${pendingBookings} pending on this board`}
-          tone="sand"
+          hint={`${pendingBookings} pending in the visible queue`}
+          trend="Reservation workflow"
+          tone="cream"
         />
         <StatCard
           icon={Wrench}
-          label="Tickets in scope"
+          label="Tickets"
           value={loading ? "..." : compactCount(snapshot?.tickets?.totalElements ?? 0)}
-          hint={loading ? "Reviewing maintenance queue" : `${resolvedTickets} resolved in the current snapshot`}
-          tone="teal"
+          hint={`${ticketPressure} currently active`}
+          trend="Maintenance desk"
+          tone="sand"
         />
         <StatCard
           icon={Bell}
-          label="Unread alerts"
+          label="Notifications"
           value={loading ? "..." : compactCount(snapshot?.notifications?.totalElements ?? 0)}
-          hint={loading ? "Checking inbox pressure" : "Unread notification inbox for this session"}
-          tone="cream"
-        />
-        <StatCard
-          icon={ScrollText}
-          label="Audit visibility"
-          value={loading ? "..." : isAdmin ? compactCount(snapshot?.auditLogs?.totalElements ?? 0) : "Admin"}
-          hint={isAdmin ? "Recent admin-tracked activity" : "Audit lane unlocks for admins only"}
-          tone="cream"
-        />
-        <StatCard
-          icon={Shield}
-          label="Current access"
-          value={currentUser?.role || "-"}
-          hint={currentUser?.displayName || currentUser?.email}
+          hint={`${unreadNotifications} unread messages in inbox`}
+          trend="Inbox and alerts"
           tone="teal"
         />
       </section>
 
-      <section className="dashboard-grid">
+      <section className="portal-dashboard-columns">
         <SectionCard
-          eyebrow="Workflow board"
-          title="Live queues"
-          description="Keep the immediate next decisions visible without opening every module."
-          className="dashboard-grid__wide"
+          eyebrow="Quick actions"
+          title="Portal modules"
+          description="Jump into the module that matches the next operational step."
+          className="portal-dashboard-columns__wide"
         >
           {loading && !snapshot ? (
-            <LoadingState title="Loading live queues" message="Pulling bookings, tickets, and notification activity." />
+            <LoadingState title="Loading module snapshot" message="Preparing the portal modules." />
           ) : (
-            <div className="cockpit-lanes">
-              <article className="cockpit-lane">
-                <div className="cockpit-lane__header">
+            <div className="module-grid">
+              <Link to="/resources" className="module-card">
+                <div className="module-card__icon">
+                  <Boxes size={18} />
+                </div>
+                <div>
+                  <strong>Resource catalogue</strong>
+                  <p>Browse campus spaces, status, and availability windows.</p>
+                </div>
+                <span>{resources.length} visible</span>
+              </Link>
+
+              <Link to="/bookings" className="module-card">
+                <div className="module-card__icon">
+                  <CalendarRange size={18} />
+                </div>
+                <div>
+                  <strong>Booking workspace</strong>
+                  <p>Move through pending approvals, requests, and ownership updates.</p>
+                </div>
+                <span>{snapshot?.bookings?.totalElements ?? 0} in scope</span>
+              </Link>
+
+              <Link to="/tickets" className="module-card">
+                <div className="module-card__icon">
+                  <Wrench size={18} />
+                </div>
+                <div>
+                  <strong>Maintenance desk</strong>
+                  <p>Track incident pressure, technician assignments, and service progress.</p>
+                </div>
+                <span>{snapshot?.tickets?.totalElements ?? 0} active records</span>
+              </Link>
+
+              <Link to="/notifications" className="module-card">
+                <div className="module-card__icon">
+                  <Bell size={18} />
+                </div>
+                <div>
+                  <strong>Notification inbox</strong>
+                  <p>Clear unread alerts and keep operational follow-up moving.</p>
+                </div>
+                <span>{snapshot?.notifications?.totalElements ?? 0} messages</span>
+              </Link>
+
+              {isAdmin ? (
+                <>
+                  <Link to="/users" className="module-card">
+                    <div className="module-card__icon">
+                      <Shield size={18} />
+                    </div>
+                    <div>
+                      <strong>User directory</strong>
+                      <p>Review platform roles, technicians, and access posture.</p>
+                    </div>
+                    <span>Admin control</span>
+                  </Link>
+
+                  <Link to="/audit" className="module-card">
+                    <div className="module-card__icon">
+                      <Clock3 size={18} />
+                    </div>
+                    <div>
+                      <strong>Audit workbench</strong>
+                      <p>Read audit history and run legacy data support tools.</p>
+                    </div>
+                    <span>{snapshot?.auditLogs?.totalElements ?? 0} logged actions</span>
+                  </Link>
+                </>
+              ) : null}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          tone="soft"
+          eyebrow="Recent activity"
+          title="Operational timeline"
+          description="A blended stream of booking, ticket, notification, and audit activity from the current visible scope."
+        >
+          {loading && !snapshot ? (
+            <LoadingState title="Loading timeline" message="Merging recent operational events." compact />
+          ) : activityTimeline.length ? (
+            <div className="timeline-list">
+              {activityTimeline.map((item) => (
+                <article key={item.id} className="timeline-item">
+                  <div className={`timeline-item__dot timeline-item__dot--${item.tone}`} />
+                  <div className="timeline-item__copy">
+                    <div className="timeline-item__top">
+                      <strong>{item.title}</strong>
+                      <span>{formatCompactDateTime(item.createdAt)}</span>
+                    </div>
+                    <p>{item.detail}</p>
+                    <div className="timeline-item__meta">
+                      <StatusBadge value={item.type} variant="general" />
+                      <span>{item.summary}</span>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              compact
+              icon={Sparkles}
+              title="No recent activity"
+              message="As new bookings, tickets, notifications, or audit events arrive, they will surface here."
+            />
+          )}
+        </SectionCard>
+      </section>
+
+      <section className="portal-dashboard-columns">
+        <SectionCard
+          eyebrow="Live queues"
+          title="Current operational lanes"
+          description="Read the top items in each queue without leaving portal home."
+          className="portal-dashboard-columns__wide"
+        >
+          {loading && !snapshot ? (
+            <LoadingState title="Loading queue cards" message="Checking bookings, tickets, and notifications." />
+          ) : (
+            <div className="lane-grid">
+              <article className="lane-card">
+                <div className="lane-card__header">
                   <div>
-                    <span className="cockpit-lane__label">Bookings</span>
+                    <span>Bookings</span>
                     <strong>{snapshot?.bookings?.totalElements ?? 0}</strong>
                   </div>
-                  <StatusBadge value={isAdmin ? "ADMIN" : "USER"} variant="general" />
+                  <Link to="/bookings" className="lane-card__link">
+                    Open
+                    <ExternalLink size={14} />
+                  </Link>
                 </div>
                 {bookings.length ? (
                   <div className="list-stack">
-                    {bookings.map((booking) => (
+                    {bookings.slice(0, 3).map((booking) => (
                       <div key={booking.id} className="list-item">
                         <div>
                           <strong>{booking.resourceName}</strong>
-                          <p>{booking.ownerDisplayName || booking.ownerEmail}</p>
+                          <p>{booking.ownerDisplayName || booking.ownerEmail || "Campus user"}</p>
                         </div>
                         <div className="list-item__meta">
                           <StatusBadge value={booking.status} />
@@ -201,21 +497,24 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState title="No booking traffic" message="No booking records are visible in your current backend scope." compact />
+                  <EmptyState compact title="No booking items" message="No booking records are visible in this portal scope." />
                 )}
               </article>
 
-              <article className="cockpit-lane">
-                <div className="cockpit-lane__header">
+              <article className="lane-card">
+                <div className="lane-card__header">
                   <div>
-                    <span className="cockpit-lane__label">Tickets</span>
+                    <span>Tickets</span>
                     <strong>{snapshot?.tickets?.totalElements ?? 0}</strong>
                   </div>
-                  <StatusBadge value={isTechnician ? "TECHNICIAN" : currentUser?.role} variant="general" />
+                  <Link to="/tickets" className="lane-card__link">
+                    Open
+                    <ExternalLink size={14} />
+                  </Link>
                 </div>
                 {tickets.length ? (
                   <div className="list-stack">
-                    {tickets.map((ticket) => (
+                    {tickets.slice(0, 3).map((ticket) => (
                       <div key={ticket.id} className="list-item">
                         <div>
                           <strong>{ticket.title}</strong>
@@ -229,21 +528,24 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState title="No ticket pressure" message="The current ticket queue is empty for this role and scope." compact />
+                  <EmptyState compact title="No active tickets" message="Ticket pressure is currently low in this scope." />
                 )}
               </article>
 
-              <article className="cockpit-lane">
-                <div className="cockpit-lane__header">
+              <article className="lane-card">
+                <div className="lane-card__header">
                   <div>
-                    <span className="cockpit-lane__label">Inbox</span>
+                    <span>Notifications</span>
                     <strong>{snapshot?.notifications?.totalElements ?? 0}</strong>
                   </div>
-                  <StatusBadge value="UNREAD" variant="pending" />
+                  <Link to="/notifications" className="lane-card__link">
+                    Open
+                    <ExternalLink size={14} />
+                  </Link>
                 </div>
                 {notifications.length ? (
                   <div className="list-stack">
-                    {notifications.map((notification) => (
+                    {notifications.slice(0, 3).map((notification) => (
                       <div key={notification.id} className="list-item">
                         <div>
                           <strong>{notification.title}</strong>
@@ -257,7 +559,7 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState title="Inbox calm" message="No unread notifications are waiting right now." compact />
+                  <EmptyState compact title="Inbox is clear" message="No notification records are visible right now." />
                 )}
               </article>
             </div>
@@ -265,73 +567,39 @@ export default function DashboardPage() {
         </SectionCard>
 
         <SectionCard
-          eyebrow="Role guidance"
+          tone="soft"
+          eyebrow="Portal guidance"
           title={roleFocus.title}
-          description={roleFocus.message}
-          actions={(
-            <Link className="button button--ghost" to={roleFocus.actionHref}>
-              Open lane
-            </Link>
-          )}
+          description="A simple reminder of what this role should prioritise next."
         >
           <div className="dashboard-sidecard">
             <div className="dashboard-sidecard__icon">
               <Sparkles size={18} />
             </div>
             <div>
-              <strong>Recommended next move</strong>
+              <strong>Suggested next move</strong>
               <p>
                 {isAdmin
-                  ? "Review pending bookings, assign any unowned incidents, then scan audit history for important admin changes."
+                  ? "Review queue pressure, then move into the user directory or audit workbench for any admin tasks that need escalation."
                   : isTechnician
-                    ? "Open the ticket queue, move active issues into progress, and clear assignment notifications as you go."
-                    : "Check your pending bookings, watch unread alerts, and update open tickets with fresh notes when needed."}
+                    ? "Open assigned tickets, move the next live issue forward, and clear inbox alerts after each update."
+                    : "Review your latest booking and ticket activity, then clear unread notifications before starting a new request."}
               </p>
             </div>
           </div>
+
           <div className="dashboard-insight-list">
             <div className="dashboard-insight">
               <Clock3 size={16} />
-              <span>Last dashboard sync refreshes backend-backed data only, no mock widgets.</span>
+              <span>This home view always reflects live backend data instead of placeholder widgets.</span>
             </div>
             <div className="dashboard-insight">
               <Shield size={16} />
-              <span>Views remain role-aware, so totals reflect your current access lane.</span>
+              <span>Role-aware visibility keeps the portal clean and limits each lane to relevant operational work.</span>
             </div>
           </div>
         </SectionCard>
       </section>
-
-      {isAdmin ? (
-        <SectionCard
-          eyebrow="Admin pulse"
-          title="Recent audit activity"
-          description="Quick read on important backend-tracked changes without leaving the cockpit."
-          actions={<Link className="button button--ghost" to="/audit">Open full audit</Link>}
-        >
-          {loading && !snapshot ? (
-            <LoadingState title="Loading audit pulse" message="Reading the latest admin activity." compact />
-          ) : auditRows.length ? (
-            <div className="list-stack">
-              {auditRows.map((row) => (
-                <div key={row.id} className="list-item">
-                  <div>
-                    <strong>{row.action}</strong>
-                    <p>{row.details || `${row.entityType} #${row.entityId || "-"}`}</p>
-                  </div>
-                  <div className="list-item__meta">
-                    <StatusBadge value={row.entityType} variant="general" />
-                    <span>{row.performedByEmail || row.performedByIdentifier || "System"}</span>
-                    <span>{formatCompactDateTime(row.createdAt)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="No audit activity" message="No admin-tracked events are available in the latest snapshot." compact />
-          )}
-        </SectionCard>
-      ) : null}
     </PageShell>
   );
 }

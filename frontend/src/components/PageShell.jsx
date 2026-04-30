@@ -2,6 +2,7 @@ export default function PageShell({ eyebrow, title, description, actions, meta, 
   return (
     <div className="page-stack">
       <section className="page-shell">
+        <div className="page-shell__accent" aria-hidden="true" />
         <div className="page-shell__copy">
           {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
           <h2>{title}</h2>

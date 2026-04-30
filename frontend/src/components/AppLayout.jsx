@@ -2,6 +2,7 @@ import {
   Bell,
   Boxes,
   CalendarRange,
+  ChevronRight,
   ClipboardList,
   LayoutDashboard,
   LogOut,
@@ -13,25 +14,25 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
 function navigationForRole(role) {
   const common = [
-    { to: "/", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/resources", label: "Resources", icon: Boxes },
-    { to: "/bookings", label: "Bookings", icon: CalendarRange },
-    { to: "/tickets", label: "Tickets", icon: Wrench },
-    { to: "/notifications", label: "Notifications", icon: Bell },
+    { to: "/", label: "Home", icon: LayoutDashboard, group: "workspace" },
+    { to: "/resources", label: "Resources", icon: Boxes, group: "workspace" },
+    { to: "/bookings", label: "Bookings", icon: CalendarRange, group: "workspace" },
+    { to: "/tickets", label: "Tickets", icon: Wrench, group: "workspace" },
+    { to: "/notifications", label: "Inbox", icon: Bell, group: "workspace" },
   ];
 
   if (role === "ADMIN") {
     return [
       ...common,
-      { to: "/users", label: "Users", icon: UserCog },
-      { to: "/audit", label: "Audit & Backfill", icon: ScrollText },
+      { to: "/users", label: "Users", icon: UserCog, group: "admin" },
+      { to: "/audit", label: "Audit", icon: ScrollText, group: "admin" },
     ];
   }
 
@@ -41,47 +42,88 @@ function navigationForRole(role) {
 function pageCopy(pathname) {
   if (pathname === "/") {
     return {
-      title: "Operations cockpit",
-      subtitle: "Live posture across resources, bookings, tickets, notifications, and admin activity.",
+      key: "dashboard",
+      section: "Home workspace",
+      title: "Campus operations portal",
+      subtitle: "A single desk for service requests, bookings, resources, inbox activity, and oversight.",
     };
   }
 
   if (pathname.startsWith("/resources")) {
-    return { title: "Resource control", subtitle: "Campus spaces and equipment readiness." };
+    return {
+      key: "resources",
+      section: "Resource catalogue",
+      title: "Spaces and asset readiness",
+      subtitle: "Search, maintain, and update the shared campus inventory used by bookings and operations.",
+    };
   }
 
   if (pathname.startsWith("/bookings")) {
-    return { title: "Booking workflow", subtitle: "Reservation intake, approvals, and capacity flow." };
+    return {
+      key: "bookings",
+      section: "Booking workspace",
+      title: "Reservation queue and approvals",
+      subtitle: "Track ownership, status transitions, and next actions across the booking flow.",
+    };
   }
 
   if (pathname.startsWith("/tickets")) {
-    return { title: "Incident desk", subtitle: "Maintenance reporting, assignment, and resolution." };
+    return {
+      key: "tickets",
+      section: "Maintenance desk",
+      title: "Incident response and technician flow",
+      subtitle: "Follow reports, assignments, and status updates without losing operational context.",
+    };
   }
 
   if (pathname.startsWith("/notifications")) {
-    return { title: "Notification inbox", subtitle: "Unread signals and operational follow-up." };
+    return {
+      key: "notifications",
+      section: "Notification centre",
+      title: "Alerts, reminders, and follow-up",
+      subtitle: "Stay on top of unread operational signals tied to your role and current workload.",
+    };
   }
 
   if (pathname.startsWith("/users")) {
-    return { title: "User directory", subtitle: "Roles, account posture, and admin control." };
+    return {
+      key: "users",
+      section: "Admin directory",
+      title: "User roles and platform access",
+      subtitle: "Review synced accounts, technician eligibility, and role posture across the platform.",
+    };
   }
 
   if (pathname.startsWith("/audit")) {
-    return { title: "Audit history", subtitle: "Trace changes and run legacy user-link backfill." };
+    return {
+      key: "audit",
+      section: "Admin audit workbench",
+      title: "Audit trail and legacy support",
+      subtitle: "Trace key actions and run careful backfill utilities for older local records.",
+    };
   }
 
-  return { title: "Smart Campus Control Desk", subtitle: "Operational dashboard" };
+  return {
+    key: "workspace",
+    section: "Workspace",
+    title: "Smart Campus Operations Hub",
+    subtitle: "Operational workspace",
+  };
 }
 
 function roleMessage(role) {
   switch (role) {
     case "ADMIN":
-      return "Campus-wide control across approvals, roles, audits, and legacy cleanup.";
+      return "Campus-wide approvals, user control, audit visibility, and legacy cleanup tools are available.";
     case "TECHNICIAN":
-      return "Assigned maintenance workload, status progress, and inbox follow-up.";
+      return "Your portal highlights assigned maintenance work, ticket transitions, and inbox follow-up.";
     default:
-      return "Self-service view into your bookings, tickets, and notifications.";
+      return "Your portal focuses on self-service bookings, issue reporting, and notification tracking.";
   }
+}
+
+function authModeLabel(authMode) {
+  return authMode === "basic" ? "Basic Auth demo session" : "Google session";
 }
 
 export default function AppLayout({ children }) {
@@ -93,107 +135,218 @@ export default function AppLayout({ children }) {
     setNavigationOpen(false);
   }, [location.pathname]);
 
-  const navigation = navigationForRole(currentUser?.role);
   const page = pageCopy(location.pathname);
+  const navigation = navigationForRole(currentUser?.role);
+  const workspaceLinks = navigation.filter((item) => item.group === "workspace");
+  const adminLinks = navigation.filter((item) => item.group === "admin");
+  const initials = useMemo(() => {
+    const source = currentUser?.displayName || currentUser?.email || "SC";
+    return source
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
+  }, [currentUser?.displayName, currentUser?.email]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell page-${page.key}`}>
       <div
-        className={`sidebar-backdrop ${navigationOpen ? "sidebar-backdrop--visible" : ""}`}
+        className={`portal-drawer-backdrop ${navigationOpen ? "portal-drawer-backdrop--visible" : ""}`}
         role="presentation"
         onClick={() => setNavigationOpen(false)}
       />
 
-      <aside className={`sidebar ${navigationOpen ? "sidebar--open" : ""}`}>
-        <div className="sidebar-brand">
-          <div className="sidebar-brand__mark">
-            <Shield size={20} />
+      <aside className={`portal-drawer ${navigationOpen ? "portal-drawer--open" : ""}`}>
+        <div className="portal-drawer__header">
+          <div className="portal-brand">
+            <div className="portal-brand__mark">
+              <Shield size={18} />
+            </div>
+            <div>
+              <p>Smart Campus</p>
+              <strong>Operations Hub</strong>
+            </div>
           </div>
+          <button type="button" className="icon-button" onClick={() => setNavigationOpen(false)} aria-label="Close navigation">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="portal-drawer__profile">
+          <div className="portal-avatar portal-avatar--large">{initials || "SC"}</div>
           <div>
-            <p>Smart Campus</p>
-            <strong>Operations Hub</strong>
+            <strong>{currentUser?.displayName || currentUser?.email}</strong>
+            <p>{currentUser?.email}</p>
           </div>
+          <StatusBadge value={currentUser?.role} />
         </div>
 
-        <div className="sidebar-role-card">
-          <div className="sidebar-role-card__top">
-            <span className="sidebar-role-card__label">Signed in as</span>
-            <StatusBadge value={currentUser?.role} />
-          </div>
-          <strong>{currentUser?.displayName || currentUser?.email}</strong>
-          <p>{roleMessage(currentUser?.role)}</p>
+        <div className="portal-drawer__section">
+          <span className="portal-nav__label">Workspace</span>
+          <nav className="portal-mobile-nav">
+            {workspaceLinks.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === "/"}
+                  className={({ isActive }) => `portal-mobile-link ${isActive ? "portal-mobile-link--active" : ""}`}
+                >
+                  <Icon size={17} />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
         </div>
 
-        <nav className="sidebar-nav">
-          {navigation.map((item) => {
-            const Icon = item.icon;
+        {adminLinks.length ? (
+          <div className="portal-drawer__section">
+            <span className="portal-nav__label">Admin tools</span>
+            <nav className="portal-mobile-nav">
+              {adminLinks.map((item) => {
+                const Icon = item.icon;
 
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/"}
-                className={({ isActive }) => `sidebar-link ${isActive ? "sidebar-link--active" : ""}`}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-footer">
-          <p>Backend base URL</p>
-          <strong>http://localhost:8080</strong>
-          <div className="sidebar-footer__meta">
-            <ClipboardList size={14} />
-            <span>{authMode === "basic" ? "Basic Auth demo mode" : "Google session mode"}</span>
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) => `portal-mobile-link ${isActive ? "portal-mobile-link--active" : ""}`}
+                  >
+                    <Icon size={17} />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </nav>
           </div>
+        ) : null}
+
+        <div className="portal-drawer__footer">
+          <div className="portal-session-note">
+            <ClipboardList size={15} />
+            <span>{authModeLabel(authMode)}</span>
+          </div>
+          <button type="button" className="button button--danger" onClick={() => void logout()}>
+            <LogOut size={16} />
+            Sign out
+          </button>
         </div>
       </aside>
 
       <div className="app-main">
-        <header className="topbar">
-          <div className="topbar-main">
-            <button
-              type="button"
-              className="icon-button topbar-toggle"
-              onClick={() => setNavigationOpen((open) => !open)}
-            >
-              {navigationOpen ? <X size={18} /> : <Menu size={18} />}
-            </button>
+        <header className="portal-header">
+          <div className="portal-header__top">
+            <div className="portal-header__left">
+              <button
+                type="button"
+                className="icon-button portal-header__menu"
+                onClick={() => setNavigationOpen((open) => !open)}
+                aria-label="Open navigation"
+              >
+                <Menu size={18} />
+              </button>
 
-            <div className="topbar-title">
-              <p>Operational dashboard</p>
-              <h1>{page.title}</h1>
-              <span>{page.subtitle}</span>
+              <div className="portal-brand">
+                <div className="portal-brand__mark">
+                  <Shield size={18} />
+                </div>
+                <div>
+                  <p>Smart Campus</p>
+                  <strong>Operations Hub</strong>
+                </div>
+              </div>
+
+              <div className="portal-breadcrumb">
+                <span>{page.section}</span>
+                <ChevronRight size={14} />
+                <strong>{page.title}</strong>
+              </div>
+            </div>
+
+            <div className="portal-header__actions">
+              <NavLink to="/notifications" className="portal-utility-link">
+                <Bell size={16} />
+                <span>Inbox</span>
+              </NavLink>
+
+              <button type="button" className="button button--ghost" onClick={() => void refreshCurrentUser()}>
+                <RefreshCcw size={16} />
+                Refresh session
+              </button>
+
+              <div className="portal-profile-card">
+                <div className="portal-avatar">{initials || "SC"}</div>
+                <div className="portal-profile-card__copy">
+                  <strong>{currentUser?.displayName || currentUser?.email}</strong>
+                  <div className="portal-profile-card__meta">
+                    <span>{authModeLabel(authMode)}</span>
+                    <StatusBadge value={currentUser?.role} />
+                  </div>
+                </div>
+              </div>
+
+              <button type="button" className="button button--danger" onClick={() => void logout()}>
+                <LogOut size={16} />
+                Sign out
+              </button>
             </div>
           </div>
 
-          <div className="topbar-actions">
-            <button type="button" className="button button--ghost" onClick={() => void refreshCurrentUser()}>
-              <RefreshCcw size={16} />
-              Refresh session
-            </button>
+          <div className="portal-header__nav">
+            <nav className="portal-nav portal-nav--primary" aria-label="Primary workspace navigation">
+              <span className="portal-nav__label">Campus workspace</span>
+              <div className="portal-nav__links">
+                {workspaceLinks.map((item) => {
+                  const Icon = item.icon;
 
-            <div className="user-chip">
-              <div className="user-chip__avatar">
-                <Shield size={16} />
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.to === "/"}
+                      className={({ isActive }) => `portal-nav__link ${isActive ? "portal-nav__link--active" : ""}`}
+                    >
+                      <Icon size={16} />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  );
+                })}
               </div>
-              <div>
-                <strong>{currentUser?.displayName || currentUser?.email}</strong>
-                <div className="user-chip__meta">
-                  <span>{currentUser?.email}</span>
-                  <StatusBadge value={currentUser?.role} />
-                  <span className="user-chip__mode">{authMode === "basic" ? "Basic Auth" : "Google session"}</span>
+            </nav>
+
+            {adminLinks.length ? (
+              <nav className="portal-nav portal-nav--secondary" aria-label="Administrative navigation">
+                <span className="portal-nav__label">Administrative lanes</span>
+                <div className="portal-nav__links">
+                  {adminLinks.map((item) => {
+                    const Icon = item.icon;
+
+                    return (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        className={({ isActive }) => `portal-nav__link ${isActive ? "portal-nav__link--active" : ""}`}
+                      >
+                        <Icon size={16} />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    );
+                  })}
                 </div>
+              </nav>
+            ) : (
+              <div className="portal-context-card">
+                <div className="portal-context-card__header">
+                  <StatusBadge value={currentUser?.role} />
+                  <span>Current workspace posture</span>
+                </div>
+                <p>{roleMessage(currentUser?.role)}</p>
               </div>
-            </div>
-
-            <button type="button" className="button button--danger" onClick={() => void logout()}>
-              <LogOut size={16} />
-              Sign out
-            </button>
+            )}
           </div>
         </header>
 
