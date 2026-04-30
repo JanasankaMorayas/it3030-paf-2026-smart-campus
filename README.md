@@ -432,6 +432,12 @@ Technician workflow:
   - `RESOLVED -> IN_PROGRESS`
 - reporting users can still edit or cancel their own tickets where allowed, but they cannot resolve or close tickets unless they are also the assigned technician or an admin
 
+### Frontend demo flow for ticketing
+
+- users can submit maintenance and incident issues through the `Tickets` page
+- admins can review ticket status, assign technicians, and monitor workflow movement from the portal
+- technicians can view assigned tickets, update allowed statuses, and follow maintenance progress from their role-specific view
+
 ## Auth And Role Model
 
 Role model:
@@ -533,6 +539,12 @@ The notification type enum currently includes:
 - `TICKET_STATUS_UPDATED`
 - `TICKET_RESOLVED`
 - `GENERAL`
+
+### Frontend demo flow for notifications
+
+- users can open the `Notifications` page to review unread and historical alerts
+- notifications can be marked individually as read or cleared using the read-all action
+- booking and ticket workflow events automatically appear in the inbox as operational follow-up items
 
 ## Public vs protected endpoints
 
