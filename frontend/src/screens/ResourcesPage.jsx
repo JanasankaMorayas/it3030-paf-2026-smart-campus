@@ -1,5 +1,6 @@
-import { Boxes, Pencil, Plus, Trash2, Wrench } from "lucide-react";
+import { Boxes, Pencil, Plus, RefreshCcw, Trash2, Wrench, Info, CalendarRange, MapPin, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import DataToolbar from "../components/DataToolbar.jsx";
 import EmptyState from "../components/EmptyState.jsx";
@@ -36,6 +37,7 @@ const initialForm = {
 
 export default function ResourcesPage() {
   const { isAdmin } = useAuth();
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState(initialFilters);
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,8 +64,14 @@ export default function ResourcesPage() {
   }
 
   useEffect(() => {
-    void loadResources();
-  }, []);
+    const locParam = searchParams.get("location");
+    if (locParam) {
+      setFilters((current) => ({ ...current, location: locParam }));
+      void loadResources({ ...initialFilters, location: locParam });
+    } else {
+      void loadResources();
+    }
+  }, [searchParams]);
 
   function openCreate() {
     setEditingResource(null);
@@ -141,19 +149,12 @@ export default function ResourcesPage() {
       title="Resource operations"
       description="Keep the campus catalogue clean, searchable, and ready for booking and maintenance workflows."
       actions={isAdmin ? (
-        <div className="stacked-actions">
-          <button type="button" className="button button--ghost" onClick={() => void loadResources()}>
-            Refresh catalogue
-          </button>
-          <button type="button" className="button button--primary" onClick={openCreate}>
-            <Plus size={16} />
-            Create resource
-          </button>
-        </div>
-      ) : (
-        <button type="button" className="button button--ghost" onClick={() => void loadResources()}>
-          Refresh catalogue
+        <button type="button" className="button button--primary" onClick={openCreate}>
+          <Plus size={16} />
+          Create resource
         </button>
+      ) : (
+        null
       )}
       meta={(
         <>
@@ -177,15 +178,15 @@ export default function ResourcesPage() {
         description="Narrow the public catalogue by type, location, capacity, or operating status."
       >
         <form
-          className="filters-grid"
           onSubmit={(event) => {
             event.preventDefault();
             void loadResources();
           }}
+          style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "flex-end", paddingTop: "12px" }}
         >
-          <label className="field">
-            <span>Type</span>
-            <select value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value }))}>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 180px", minWidth: "150px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Type</span>
+            <select value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
               <option value="">All types</option>
               {RESOURCE_TYPES.map((type) => (
                 <option key={type} value={type}>
@@ -195,29 +196,31 @@ export default function ResourcesPage() {
             </select>
           </label>
 
-          <label className="field">
-            <span>Location</span>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 180px", minWidth: "150px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Location</span>
             <input
               value={filters.location}
               onChange={(event) => setFilters((current) => ({ ...current, location: event.target.value }))}
               placeholder="Block A"
+              style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none" }}
             />
           </label>
 
-          <label className="field">
-            <span>Min capacity</span>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 120px", minWidth: "100px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Min capacity</span>
             <input
               type="number"
               min="1"
               value={filters.minCapacity}
               onChange={(event) => setFilters((current) => ({ ...current, minCapacity: event.target.value }))}
               placeholder="40"
+              style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none" }}
             />
           </label>
 
-          <label className="field">
-            <span>Status</span>
-            <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 180px", minWidth: "150px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Status</span>
+            <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
               <option value="">All statuses</option>
               {RESOURCE_STATUSES.map((status) => (
                 <option key={status} value={status}>
@@ -227,19 +230,20 @@ export default function ResourcesPage() {
             </select>
           </label>
 
-          <div className="filter-actions">
-            <button type="submit" className="button button--primary">
-              Apply filters
-            </button>
+          <div style={{ display: "flex", gap: "12px", flex: "1 1 100%", justifyContent: "flex-end", marginTop: "8px", paddingTop: "16px", borderTop: "1px dashed #cbd5e1" }}>
             <button
               type="button"
               className="button button--subtle"
+              style={{ padding: "8px 16px", minHeight: "36px", fontSize: "13px" }}
               onClick={() => {
                 setFilters(initialFilters);
                 void loadResources(initialFilters);
               }}
             >
               Reset
+            </button>
+            <button type="submit" className="button button--primary" style={{ padding: "8px 16px", minHeight: "36px", fontSize: "13px" }}>
+              Apply filters
             </button>
           </div>
         </form>
@@ -251,6 +255,12 @@ export default function ResourcesPage() {
         eyebrow="Catalogue board"
         title={loading ? "Loading resources" : `${resources.length} resources in view`}
         description="Operational overview of spaces and assets available to the campus workflow."
+        actions={
+          <button type="button" className="button button--subtle" onClick={() => void loadResources()}>
+            <RefreshCcw size={16} />
+            Refresh
+          </button>
+        }
       >
         {loading ? (
           <LoadingState title="Loading resource catalogue" message="Fetching the latest campus inventory." lines={5} />
@@ -259,11 +269,10 @@ export default function ResourcesPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Code</th>
-                  <th>Name</th>
+                  <th>Resource</th>
+                  <th>Description</th>
                   <th>Type</th>
-                  <th>Capacity</th>
-                  <th>Location</th>
+                  <th>Details</th>
                   <th>Availability</th>
                   <th>Status</th>
                   {isAdmin ? <th>Actions</th> : null}
@@ -337,65 +346,72 @@ export default function ResourcesPage() {
         onClose={() => setModalOpen(false)}
       >
         <form className="form-grid" onSubmit={handleSubmit}>
-          <div className="form-grid form-grid--two">
-            <label className="field">
-              <span>Resource code</span>
-              <input value={formState.resourceCode} onChange={(event) => setFormState((current) => ({ ...current, resourceCode: event.target.value }))} />
-            </label>
-            <label className="field">
-              <span>Name</span>
-              <input value={formState.name} onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))} />
-            </label>
-          </div>
-
-          <label className="field">
-            <span>Description</span>
-            <textarea value={formState.description} onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))} rows={3} />
-          </label>
-
-          <div className="form-grid form-grid--two">
-            <label className="field">
-              <span>Type</span>
-              <select value={formState.type} onChange={(event) => setFormState((current) => ({ ...current, type: event.target.value }))}>
-                {RESOURCE_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {titleizeEnum(type)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>Status</span>
-              <select value={formState.status} onChange={(event) => setFormState((current) => ({ ...current, status: event.target.value }))}>
-                {RESOURCE_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {titleizeEnum(status)}
-                  </option>
-                ))}
-              </select>
+          <div style={{ padding: "20px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "16px" }}>
+            <h4 style={{ margin: "0 0 16px 0", fontSize: "15px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}><Info size={16} color="#3b82f6"/> General Information</h4>
+            <div className="form-grid form-grid--two">
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Resource code</span>
+                <input value={formState.resourceCode} onChange={(event) => setFormState((current) => ({ ...current, resourceCode: event.target.value }))} placeholder="E.g. LAB-001" required style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Name</span>
+                <input value={formState.name} onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))} placeholder="Resource name" required style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+            </div>
+            <label className="field" style={{ marginTop: "16px" }}>
+              <span style={{ fontWeight: 500, color: "#475569" }}>Description</span>
+              <textarea value={formState.description} onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))} rows={3} placeholder="Brief details about the resource..." style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
             </label>
           </div>
 
-          <div className="form-grid form-grid--two">
-            <label className="field">
-              <span>Capacity</span>
-              <input type="number" min="1" value={formState.capacity} onChange={(event) => setFormState((current) => ({ ...current, capacity: event.target.value }))} />
-            </label>
-            <label className="field">
-              <span>Location</span>
-              <input value={formState.location} onChange={(event) => setFormState((current) => ({ ...current, location: event.target.value }))} />
-            </label>
+          <div style={{ padding: "20px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "16px" }}>
+            <h4 style={{ margin: "0 0 16px 0", fontSize: "15px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}><Boxes size={16} color="#8b5cf6"/> Details & Classification</h4>
+            <div className="form-grid form-grid--two">
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Type</span>
+                <select value={formState.type} onChange={(event) => setFormState((current) => ({ ...current, type: event.target.value }))} style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
+                  {RESOURCE_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {titleizeEnum(type)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Status</span>
+                <select value={formState.status} onChange={(event) => setFormState((current) => ({ ...current, status: event.target.value }))} style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
+                  {RESOURCE_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {titleizeEnum(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="form-grid form-grid--two" style={{ marginTop: "16px" }}>
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Capacity</span>
+                <input type="number" min="1" value={formState.capacity} onChange={(event) => setFormState((current) => ({ ...current, capacity: event.target.value }))} required style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Location</span>
+                <input value={formState.location} onChange={(event) => setFormState((current) => ({ ...current, location: event.target.value }))} placeholder="Building, floor, or room" required style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+            </div>
           </div>
 
-          <div className="form-grid form-grid--two">
-            <label className="field">
-              <span>Availability start</span>
-              <input type="datetime-local" value={formState.availabilityStart} onChange={(event) => setFormState((current) => ({ ...current, availabilityStart: event.target.value }))} />
-            </label>
-            <label className="field">
-              <span>Availability end</span>
-              <input type="datetime-local" value={formState.availabilityEnd} onChange={(event) => setFormState((current) => ({ ...current, availabilityEnd: event.target.value }))} />
-            </label>
+          <div style={{ padding: "20px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px" }}>
+            <h4 style={{ margin: "0 0 16px 0", fontSize: "15px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}><CalendarRange size={16} color="#10b981"/> Availability Window</h4>
+            <div className="form-grid form-grid--two">
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Availability start</span>
+                <input type="datetime-local" value={formState.availabilityStart} onChange={(event) => setFormState((current) => ({ ...current, availabilityStart: event.target.value }))} style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Availability end</span>
+                <input type="datetime-local" value={formState.availabilityEnd} onChange={(event) => setFormState((current) => ({ ...current, availabilityEnd: event.target.value }))} style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+            </div>
           </div>
 
           <FeedbackBanner error={formError} />

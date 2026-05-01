@@ -1,4 +1,4 @@
-import { CheckCircle2, Pencil, Plus, XCircle } from "lucide-react";
+import { CheckCircle2, Pencil, Plus, RefreshCcw, XCircle, CalendarRange, Users, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import DataToolbar from "../components/DataToolbar.jsx";
@@ -182,15 +182,10 @@ export default function BookingsPage() {
       title="Booking workflow"
       description="Manage reservation intake, admin decisions, and ownership-aware changes across campus resources."
       actions={(
-        <div className="stacked-actions">
-          <button type="button" className="button button--ghost" onClick={() => void loadBookings(page, appliedFilters)}>
-            Refresh queue
-          </button>
-          <button type="button" className="button button--primary" onClick={openCreate}>
-            <Plus size={16} />
-            Create booking
-          </button>
-        </div>
+        <button type="button" className="button button--primary" onClick={openCreate}>
+          <Plus size={16} />
+          Create booking
+        </button>
       )}
       meta={(
         <>
@@ -214,16 +209,16 @@ export default function BookingsPage() {
         description="Filter by resource, requester, status, sorting, and page size without leaving the workflow."
       >
         <form
-          className="filters-grid"
           onSubmit={(event) => {
             event.preventDefault();
             setPage(0);
             setAppliedFilters({ ...filters });
           }}
+          style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "flex-end", paddingTop: "12px" }}
         >
-          <label className="field">
-            <span>Resource</span>
-            <select value={filters.resourceId} onChange={(event) => setFilters((current) => ({ ...current, resourceId: event.target.value }))}>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 180px", minWidth: "150px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Resource</span>
+            <select value={filters.resourceId} onChange={(event) => setFilters((current) => ({ ...current, resourceId: event.target.value }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
               <option value="">All resources</option>
               {resources.map((resource) => (
                 <option key={resource.id} value={resource.id}>
@@ -233,19 +228,20 @@ export default function BookingsPage() {
             </select>
           </label>
 
-          <label className="field">
-            <span>Requester</span>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 180px", minWidth: "150px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Requester</span>
             <input
               value={filters.requesterId}
               onChange={(event) => setFilters((current) => ({ ...current, requesterId: event.target.value }))}
               placeholder={isAdmin ? "Filter by email" : "Already scoped to your ownership"}
               disabled={!isAdmin}
+              style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: !isAdmin ? "#f1f5f9" : "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: !isAdmin ? "not-allowed" : "text" }}
             />
           </label>
 
-          <label className="field">
-            <span>Status</span>
-            <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 150px", minWidth: "120px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Status</span>
+            <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
               <option value="">All statuses</option>
               {BOOKING_STATUSES.map((status) => (
                 <option key={status} value={status}>
@@ -255,9 +251,9 @@ export default function BookingsPage() {
             </select>
           </label>
 
-          <label className="field">
-            <span>Sort</span>
-            <select value={filters.sort} onChange={(event) => setFilters((current) => ({ ...current, sort: event.target.value }))}>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 180px", minWidth: "150px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Sort</span>
+            <select value={filters.sort} onChange={(event) => setFilters((current) => ({ ...current, sort: event.target.value }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
               {BOOKING_SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -266,9 +262,9 @@ export default function BookingsPage() {
             </select>
           </label>
 
-          <label className="field">
-            <span>Page size</span>
-            <select value={filters.size} onChange={(event) => setFilters((current) => ({ ...current, size: Number(event.target.value) }))}>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "0 0 120px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Page size</span>
+            <select value={filters.size} onChange={(event) => setFilters((current) => ({ ...current, size: Number(event.target.value) }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
               {PAGE_SIZE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {option}
@@ -277,13 +273,11 @@ export default function BookingsPage() {
             </select>
           </label>
 
-          <div className="filter-actions">
-            <button type="submit" className="button button--primary">
-              Apply filters
-            </button>
+          <div style={{ display: "flex", gap: "12px", flex: "1 1 100%", justifyContent: "flex-end", marginTop: "8px", paddingTop: "16px", borderTop: "1px dashed #cbd5e1" }}>
             <button
               type="button"
               className="button button--subtle"
+              style={{ padding: "8px 16px", minHeight: "36px", fontSize: "13px" }}
               onClick={() => {
                 setFilters(filterTemplate);
                 setAppliedFilters(filterTemplate);
@@ -291,6 +285,9 @@ export default function BookingsPage() {
               }}
             >
               Reset
+            </button>
+            <button type="submit" className="button button--primary" style={{ padding: "8px 16px", minHeight: "36px", fontSize: "13px" }}>
+              Apply filters
             </button>
           </div>
         </form>
@@ -302,6 +299,12 @@ export default function BookingsPage() {
         eyebrow="Reservation board"
         title={loading ? "Loading bookings" : `${pageData?.totalElements ?? 0} bookings in scope`}
         description="See ownership, status, timing, and approval decisions at one glance."
+        actions={
+          <button type="button" className="button button--subtle" onClick={() => void loadBookings(page, appliedFilters)}>
+            <RefreshCcw size={16} />
+            Refresh
+          </button>
+        }
         footer={<PaginationBar pageData={pageData} onPageChange={setPage} />}
       >
         {loading ? (
@@ -313,9 +316,8 @@ export default function BookingsPage() {
                 <tr>
                   <th>Resource</th>
                   <th>Owner</th>
-                  <th>Purpose</th>
+                  <th>Purpose & Details</th>
                   <th>Time slot</th>
-                  <th>Attendees</th>
                   <th>Status</th>
                   <th>Decision</th>
                   <th>Actions</th>
@@ -330,24 +332,50 @@ export default function BookingsPage() {
                   return (
                     <tr key={booking.id}>
                       <td>
-                        <strong>{booking.resourceName}</strong>
-                        <p className="table-subtext">{booking.resourceCode}</p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                          <div style={{ width: "40px", height: "40px", borderRadius: "8px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <CalendarRange size={18} color="#64748b" />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "14px" }}>{booking.resourceName}</div>
+                            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px", fontFamily: "monospace", letterSpacing: "0.5px" }}>{booking.resourceCode}</div>
+                          </div>
+                        </div>
                       </td>
                       <td>
-                        <strong>{booking.ownerDisplayName || booking.ownerEmail}</strong>
-                        <p className="table-subtext">{booking.requesterId}</p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#e0e7ff", color: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", flexShrink: 0 }}>
+                            {(booking.ownerDisplayName || booking.ownerEmail || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: "500", color: "#1e293b", fontSize: "13px" }}>{booking.ownerDisplayName || booking.ownerEmail}</div>
+                            <div style={{ fontSize: "11px", color: "#64748b" }}>{booking.requesterId}</div>
+                          </div>
+                        </div>
                       </td>
-                      <td>{booking.purpose}</td>
-                      <td>{formatDateRange(booking.startTime, booking.endTime)}</td>
-                      <td>{booking.expectedAttendees}</td>
+                      <td>
+                        <div style={{ fontSize: "13px", color: "#334155", display: "flex", flexDirection: "column", gap: "6px" }}>
+                          <div style={{ fontWeight: "500", display: "flex", alignItems: "center", gap: "6px" }}><FileText size={14} color="#94a3b8" /> {booking.purpose}</div>
+                          <div style={{ color: "#64748b", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}><Users size={14} color="#94a3b8" /> {booking.expectedAttendees} attendees</div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: "13px", color: "#475569", backgroundColor: "#f8fafc", padding: "6px 10px", borderRadius: "6px", display: "inline-block", border: "1px solid #f1f5f9" }}>
+                          {formatDateRange(booking.startTime, booking.endTime)}
+                        </div>
+                      </td>
                       <td>
                         <StatusBadge value={booking.status} />
                       </td>
-                      <td>{booking.adminDecisionReason || "-"}</td>
+                      <td>
+                        <div style={{ fontSize: "13px", color: booking.adminDecisionReason ? "#334155" : "#94a3b8", fontStyle: booking.adminDecisionReason ? "normal" : "italic", maxWidth: "200px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                          {booking.adminDecisionReason || "Pending review..."}
+                        </div>
+                      </td>
                       <td>
                         <div className="table-actions">
                           {canEdit ? (
-                            <button type="button" className="icon-button" onClick={() => openEdit(booking)} aria-label="Edit booking">
+                            <button type="button" className="icon-button" onClick={() => openEdit(booking)} aria-label="Edit booking" title="Edit booking">
                               <Pencil size={16} />
                             </button>
                           ) : null}
@@ -362,6 +390,7 @@ export default function BookingsPage() {
                                   setStatusModal({ open: true, bookingId: booking.id, status: "APPROVED", adminDecisionReason: "" });
                                 }}
                                 aria-label="Approve booking"
+                                title="Approve booking"
                               >
                                 <CheckCircle2 size={16} />
                               </button>
@@ -373,6 +402,7 @@ export default function BookingsPage() {
                                   setStatusModal({ open: true, bookingId: booking.id, status: "REJECTED", adminDecisionReason: "" });
                                 }}
                                 aria-label="Reject booking"
+                                title="Reject booking"
                               >
                                 <XCircle size={16} />
                               </button>
@@ -380,7 +410,7 @@ export default function BookingsPage() {
                           ) : null}
 
                           {canCancel ? (
-                            <button type="button" className="button button--subtle" onClick={() => setCancelTarget(booking)}>
+                            <button type="button" className="button button--subtle" onClick={() => setCancelTarget(booking)} title="Cancel booking">
                               Cancel
                             </button>
                           ) : null}
@@ -408,47 +438,51 @@ export default function BookingsPage() {
         onClose={() => setModalOpen(false)}
       >
         <form className="form-grid" onSubmit={handleSubmit}>
-          <label className="field">
-            <span>Resource</span>
-            <select value={formState.resourceId} onChange={(event) => setFormState((current) => ({ ...current, resourceId: event.target.value }))}>
-              <option value="">Select a resource</option>
-              {resources.map((resource) => (
-                <option key={resource.id} value={resource.id}>
-                  {resource.resourceCode} - {resource.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {isAdmin ? (
+          <div style={{ padding: "20px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "16px" }}>
+            <h4 style={{ margin: "0 0 16px 0", fontSize: "15px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}>Reservation Details</h4>
             <label className="field">
-              <span>Requester email</span>
-              <input value={formState.requesterId} onChange={(event) => setFormState((current) => ({ ...current, requesterId: event.target.value }))} />
+              <span style={{ fontWeight: 500, color: "#475569" }}>Select Resource</span>
+              <select value={formState.resourceId} onChange={(event) => setFormState((current) => ({ ...current, resourceId: event.target.value }))} required style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
+                <option value="">Choose a facility or equipment...</option>
+                {resources.map((resource) => (
+                  <option key={resource.id} value={resource.id}>
+                    {resource.resourceCode} - {resource.name}
+                  </option>
+                ))}
+              </select>
             </label>
-          ) : null}
 
-          <label className="field">
-            <span>Purpose</span>
-            <input value={formState.purpose} onChange={(event) => setFormState((current) => ({ ...current, purpose: event.target.value }))} />
-          </label>
+            {isAdmin ? (
+              <label className="field" style={{ marginTop: "16px" }}>
+                <span style={{ fontWeight: 500, color: "#475569" }}>Requester email (Admin override)</span>
+                <input type="email" value={formState.requesterId} onChange={(event) => setFormState((current) => ({ ...current, requesterId: event.target.value }))} placeholder="Leave blank to book for yourself" style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+            ) : null}
 
-          <div className="form-grid form-grid--two">
-            <label className="field">
-              <span>Expected attendees</span>
-              <input type="number" min="1" value={formState.expectedAttendees} onChange={(event) => setFormState((current) => ({ ...current, expectedAttendees: event.target.value }))} />
-            </label>
-            <div />
+            <div className="form-grid form-grid--two" style={{ marginTop: "16px" }}>
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Purpose of Booking</span>
+                <input value={formState.purpose} onChange={(event) => setFormState((current) => ({ ...current, purpose: event.target.value }))} placeholder="E.g. Study session, meeting" required style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Expected Attendees</span>
+                <input type="number" min="1" value={formState.expectedAttendees} onChange={(event) => setFormState((current) => ({ ...current, expectedAttendees: event.target.value }))} required style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+            </div>
           </div>
 
-          <div className="form-grid form-grid--two">
-            <label className="field">
-              <span>Start time</span>
-              <input type="datetime-local" value={formState.startTime} onChange={(event) => setFormState((current) => ({ ...current, startTime: event.target.value }))} />
-            </label>
-            <label className="field">
-              <span>End time</span>
-              <input type="datetime-local" value={formState.endTime} onChange={(event) => setFormState((current) => ({ ...current, endTime: event.target.value }))} />
-            </label>
+          <div style={{ padding: "20px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px" }}>
+            <h4 style={{ margin: "0 0 16px 0", fontSize: "15px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}><CalendarRange size={16} color="#10b981"/> Date & Time</h4>
+            <div className="form-grid form-grid--two">
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>Start time</span>
+                <input type="datetime-local" value={formState.startTime} onChange={(event) => setFormState((current) => ({ ...current, startTime: event.target.value }))} required style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+              <label className="field">
+                <span style={{ fontWeight: 500, color: "#475569" }}>End time</span>
+                <input type="datetime-local" value={formState.endTime} onChange={(event) => setFormState((current) => ({ ...current, endTime: event.target.value }))} required style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+              </label>
+            </div>
           </div>
 
           <FeedbackBanner error={formError} />
