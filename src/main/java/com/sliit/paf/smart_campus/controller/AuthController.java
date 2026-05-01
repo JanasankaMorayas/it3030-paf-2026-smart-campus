@@ -10,8 +10,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.sliit.paf.smart_campus.dto.ForgotPasswordRequest;
+import com.sliit.paf.smart_campus.dto.ResetPasswordRequest;
+import com.sliit.paf.smart_campus.service.PasswordResetService;
+import jakarta.validation.Valid;
 
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -22,13 +29,33 @@ public class AuthController {
 
     private final ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider;
     private final AppSecurityProperties securityProperties;
+    private final PasswordResetService passwordResetService;
 
     public AuthController(
             ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
-            AppSecurityProperties securityProperties
+            AppSecurityProperties securityProperties,
+            PasswordResetService passwordResetService
     ) {
         this.clientRegistrationRepositoryProvider = clientRegistrationRepositoryProvider;
         this.securityProperties = securityProperties;
+        this.passwordResetService = passwordResetService;
+    }
+
+    @PostMapping("/api/auth/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.createPasswordResetTokenForUser(request.getEmail());
+        // Always return success to prevent email enumeration
+        return ResponseEntity.ok().body(Map.of("message", "If an account with that email exists, we have sent a verification code."));
+    }
+    
+    @PostMapping("/api/auth/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        boolean success = passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
+        if (success) {
+            return ResponseEntity.ok().body(Map.of("message", "Password has been successfully updated."));
+        } else {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid or expired verification code."));
+        }
     }
 
     @GetMapping("/login")

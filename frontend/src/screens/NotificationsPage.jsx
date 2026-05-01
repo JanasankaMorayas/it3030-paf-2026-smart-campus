@@ -1,4 +1,4 @@
-import { Bell, CheckCheck, Eye, Trash2 } from "lucide-react";
+import { Bell, CheckCheck, Eye, RefreshCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import DataToolbar from "../components/DataToolbar.jsx";
@@ -106,15 +106,10 @@ export default function NotificationsPage() {
       title="Notification inbox"
       description="Stay on top of booking and ticket events with quick unread focus, bulk actions, and inbox hygiene."
       actions={(
-        <div className="stacked-actions">
-          <button type="button" className="button button--ghost" onClick={() => void loadNotifications(page, appliedFilters)}>
-            Refresh inbox
-          </button>
-          <button type="button" className="button button--primary" onClick={() => void handleMarkAllRead()}>
-            <CheckCheck size={16} />
-            Mark all as read
-          </button>
-        </div>
+        <button type="button" className="button button--primary" onClick={() => void handleMarkAllRead()}>
+          <CheckCheck size={16} />
+          Mark all as read
+        </button>
       )}
       meta={(
         <>
@@ -138,28 +133,30 @@ export default function NotificationsPage() {
         description="Switch between unread focus and full inbox review, then refine by type, recipient, sort order, and page size."
       >
         <form
-          className="filters-grid"
           onSubmit={(event) => {
             event.preventDefault();
             setPage(0);
             setAppliedFilters({ ...filters });
           }}
+          style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "flex-end", paddingTop: "12px" }}
         >
-          <label className="field field--checkbox">
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", flex: "1 1 160px", minWidth: "150px", height: "40px", cursor: "pointer" }}>
             <input
               type="checkbox"
               checked={filters.unreadOnly}
               onChange={(event) => setFilters((current) => ({ ...current, unreadOnly: event.target.checked }))}
+              style={{ width: "18px", height: "18px", accentColor: "#2563eb", cursor: "pointer" }}
             />
-            <span>Unread only</span>
+            <span style={{ fontSize: "13px", fontWeight: "600", color: "#1e293b" }}>Unread only</span>
           </label>
 
-          <label className="field">
-            <span>Type</span>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 160px", minWidth: "150px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Type</span>
             <select
               value={filters.type}
               onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value }))}
               disabled={filters.unreadOnly}
+              style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: filters.unreadOnly ? "#f1f5f9" : "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: filters.unreadOnly ? "not-allowed" : "pointer" }}
             >
               <option value="">All types</option>
               {NOTIFICATION_TYPES.map((type) => (
@@ -170,19 +167,20 @@ export default function NotificationsPage() {
             </select>
           </label>
 
-          <label className="field">
-            <span>Recipient</span>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 200px", minWidth: "150px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Recipient</span>
             <input
               value={filters.recipient}
               onChange={(event) => setFilters((current) => ({ ...current, recipient: event.target.value }))}
               placeholder={isAdmin ? "Optional recipient inbox filter" : "Already scoped to your inbox"}
               disabled={!isAdmin}
+              style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: !isAdmin ? "#f1f5f9" : "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: !isAdmin ? "not-allowed" : "text" }}
             />
           </label>
 
-          <label className="field">
-            <span>Sort</span>
-            <select value={filters.sort} onChange={(event) => setFilters((current) => ({ ...current, sort: event.target.value }))}>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 160px", minWidth: "150px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Sort</span>
+            <select value={filters.sort} onChange={(event) => setFilters((current) => ({ ...current, sort: event.target.value }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
               {NOTIFICATION_SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -191,9 +189,9 @@ export default function NotificationsPage() {
             </select>
           </label>
 
-          <label className="field">
-            <span>Page size</span>
-            <select value={filters.size} onChange={(event) => setFilters((current) => ({ ...current, size: Number(event.target.value) }))}>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "0 0 120px" }}>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Page size</span>
+            <select value={filters.size} onChange={(event) => setFilters((current) => ({ ...current, size: Number(event.target.value) }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
               {PAGE_SIZE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {option}
@@ -202,13 +200,11 @@ export default function NotificationsPage() {
             </select>
           </label>
 
-          <div className="filter-actions">
-            <button type="submit" className="button button--primary">
-              Apply filters
-            </button>
+          <div style={{ display: "flex", gap: "12px", flex: "1 1 100%", justifyContent: "flex-end", marginTop: "8px", paddingTop: "16px", borderTop: "1px dashed #cbd5e1" }}>
             <button
               type="button"
               className="button button--subtle"
+              style={{ padding: "8px 16px", minHeight: "36px", fontSize: "13px" }}
               onClick={() => {
                 setFilters(filterTemplate);
                 setAppliedFilters(filterTemplate);
@@ -216,6 +212,9 @@ export default function NotificationsPage() {
               }}
             >
               Reset
+            </button>
+            <button type="submit" className="button button--primary" style={{ padding: "8px 16px", minHeight: "36px", fontSize: "13px" }}>
+              Apply filters
             </button>
           </div>
         </form>
@@ -227,6 +226,12 @@ export default function NotificationsPage() {
         eyebrow="Inbox stream"
         title={loading ? "Loading notifications" : `${pageData?.totalElements ?? 0} notifications found`}
         description="Cards stay readable on desktop and mobile while preserving the backend inbox model."
+        actions={
+          <button type="button" className="button button--subtle" onClick={() => void loadNotifications(page, appliedFilters)}>
+            <RefreshCcw size={16} />
+            Refresh
+          </button>
+        }
         footer={<PaginationBar pageData={pageData} onPageChange={setPage} />}
       >
         {loading ? (

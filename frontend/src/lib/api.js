@@ -108,8 +108,13 @@ async function request(path, options = {}) {
   };
 
   if (body !== undefined && body !== null) {
-    requestHeaders.set("Content-Type", "application/json");
-    fetchOptions.body = JSON.stringify(body);
+    if (body instanceof FormData) {
+      // Let the browser set the Content-Type automatically for FormData (with boundary)
+      fetchOptions.body = body;
+    } else {
+      requestHeaders.set("Content-Type", "application/json");
+      fetchOptions.body = JSON.stringify(body);
+    }
   }
 
   let response;
@@ -158,6 +163,24 @@ const authApi = {
   getGoogleLoginUrl() {
     const redirectTarget = typeof window !== "undefined" ? `${window.location.origin}/` : "/";
     return buildUrl("/login", { redirect_uri: redirectTarget });
+  },
+  
+  async register(payload) {
+    return request("/api/users/register", { method: "POST", body: payload });
+  },
+
+  async forgotPassword(email) {
+    return request("/api/auth/forgot-password", {
+      method: "POST",
+      body: { email }
+    });
+  },
+
+  async resetPassword(token, newPassword) {
+    return request("/api/auth/reset-password", {
+      method: "POST",
+      body: { token, newPassword }
+    });
   },
 
   getApiBaseUrl() {
@@ -229,6 +252,23 @@ export const api = {
     cancel(id) {
       return request(`/api/tickets/${id}`, { method: "DELETE" });
     },
+    uploadImages(files) {
+      const formData = new FormData();
+      files.forEach((file) => formData.append("images", file));
+      return request("/api/images/upload", { method: "POST", body: formData });
+    },
+    getComments(ticketId) {
+      return request(`/api/tickets/${ticketId}/comments`);
+    },
+    addComment(ticketId, payload) {
+      return request(`/api/tickets/${ticketId}/comments`, { method: "POST", body: payload });
+    },
+    updateComment(ticketId, commentId, payload) {
+      return request(`/api/tickets/${ticketId}/comments/${commentId}`, { method: "PUT", body: payload });
+    },
+    removeComment(ticketId, commentId) {
+      return request(`/api/tickets/${ticketId}/comments/${commentId}`, { method: "DELETE" });
+    },
   },
 
   notifications: {
@@ -258,6 +298,12 @@ export const api = {
     },
     updateRole(id, payload) {
       return request(`/api/users/${id}/role`, { method: "PATCH", body: payload });
+    },
+    updateProfile(payload) {
+      return request("/api/users/me", { method: "PUT", body: payload });
+    },
+    remove(id) {
+      return request(`/api/users/${id}`, { method: "DELETE" });
     },
   },
 

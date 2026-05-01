@@ -45,14 +45,16 @@ Implemented in this sprint:
 - Java 25
 - Spring Boot 4
 - Spring Data JPA
-- MySQL for local development
+- MySQL standalone for default local development
+- H2 as an optional local fallback profile
 - H2 for automated tests
 
 ## Setup
 
-1. Create a MySQL database named `smart_campus_db_v2`.
-2. Update the database credentials in [src/main/resources/application.properties](src/main/resources/application.properties) if needed.
-3. Start the API:
+1. Install and start a standalone MySQL Server instance.
+2. Create a database named `smart_campus_db_v2`.
+3. Update the MySQL username/password in [src/main/resources/application.properties](src/main/resources/application.properties) if needed.
+4. Start the API from the repo root:
 
 ```bash
 ./mvnw spring-boot:run
@@ -64,7 +66,9 @@ PowerShell command:
 .\mvnw spring-boot:run
 ```
 
-4. Run tests:
+This recommended setup uses MySQL directly and does not require XAMPP.
+
+5. Run tests:
 
 ```bash
 ./mvnw test
@@ -75,6 +79,17 @@ PowerShell command:
 ```powershell
 .\mvnw test
 ```
+
+### Optional H2 mode
+
+If you need a quick local fallback without MySQL, start the app with the H2 profile:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE="h2"
+.\mvnw spring-boot:run
+```
+
+H2-specific datasource settings are kept in [src/main/resources/application-h2.properties](src/main/resources/application-h2.properties).
 
 ## Response conventions
 
@@ -145,7 +160,8 @@ Operational notes:
 
 - `spring.jpa.open-in-view=false` is enabled so entity loading stays inside the service layer
 - `spring.data.web.pageable.max-page-size=100` is enabled for safer paging defaults
-- local MySQL development still points to `smart_campus_db_v2`
+- default local development now uses MySQL standalone with the `smart_campus_db_v2` schema
+- H2 remains available through the optional `h2` Spring profile
 
 ### Google OAuth2 configuration
 

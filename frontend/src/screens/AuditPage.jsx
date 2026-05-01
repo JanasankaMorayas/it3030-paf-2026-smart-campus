@@ -1,4 +1,4 @@
-import { DatabaseBackup, RefreshCcw, ScrollText, Shield } from "lucide-react";
+import { DatabaseBackup, RefreshCcw, ScrollText, Shield, User, Wrench, CalendarRange, Boxes, Bell, Activity } from "lucide-react";
 import { useEffect, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import DataToolbar from "../components/DataToolbar.jsx";
@@ -13,8 +13,20 @@ import StatCard from "../components/StatCard.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { AUDIT_ENTITY_TYPES, AUDIT_SORT_OPTIONS, PAGE_SIZE_OPTIONS } from "../lib/options.js";
-import { compactCount, formatCompactDateTime, toDateTimeLocalValue } from "../lib/format.js";
+import { compactCount, formatCompactDateTime, toDateTimeLocalValue, titleizeEnum } from "../lib/format.js";
 import { api } from "../lib/api.js";
+
+function getEntityIcon(type) {
+  switch (type) {
+    case "USER": return <User size={20} />;
+    case "TICKET": return <Wrench size={20} />;
+    case "BOOKING": return <CalendarRange size={20} />;
+    case "RESOURCE": return <Boxes size={20} />;
+    case "NOTIFICATION": return <Bell size={20} />;
+    case "BACKFILL": return <DatabaseBackup size={20} />;
+    default: return <Activity size={20} />;
+  }
+}
 
 const filterTemplate = {
   entityType: "",
@@ -113,16 +125,10 @@ export default function AuditPage() {
         title="Audit history and legacy backfill"
         description="Trace operational actions, query admin history, and safely link older string-based records to real users."
         actions={(
-          <div className="stacked-actions">
-            <button type="button" className="button button--ghost" onClick={() => void loadAuditLogs(page, appliedFilters)}>
-              <RefreshCcw size={16} />
-              Refresh logs
-            </button>
-            <button type="button" className="button button--primary" onClick={() => setConfirmBackfill(true)}>
-              <DatabaseBackup size={16} />
-              Run backfill
-            </button>
-          </div>
+          <button type="button" className="button button--primary" onClick={() => setConfirmBackfill(true)}>
+            <DatabaseBackup size={16} />
+            Run backfill
+          </button>
         )}
         meta={(
           <>
@@ -195,17 +201,16 @@ export default function AuditPage() {
             description="Filter by entity type, action, operator, date range, sort order, and page size."
           >
             <form
-              className="form-grid"
               onSubmit={(event) => {
                 event.preventDefault();
                 setPage(0);
                 setAppliedFilters({ ...filters });
               }}
+              style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "flex-end", paddingTop: "12px" }}
             >
-              <div className="form-grid form-grid--two">
-                <label className="field">
-                  <span>Entity type</span>
-                  <select value={filters.entityType} onChange={(event) => setFilters((current) => ({ ...current, entityType: event.target.value }))}>
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 160px", minWidth: "140px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Entity type</span>
+                  <select value={filters.entityType} onChange={(event) => setFilters((current) => ({ ...current, entityType: event.target.value }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
                     <option value="">All entities</option>
                     {AUDIT_ENTITY_TYPES.map((entityType) => (
                       <option key={entityType} value={entityType}>
@@ -214,32 +219,28 @@ export default function AuditPage() {
                     ))}
                   </select>
                 </label>
-                <label className="field">
-                  <span>Action</span>
-                  <input value={filters.action} onChange={(event) => setFilters((current) => ({ ...current, action: event.target.value }))} placeholder="BOOKING_CREATED" />
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 160px", minWidth: "140px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Action</span>
+                  <input value={filters.action} onChange={(event) => setFilters((current) => ({ ...current, action: event.target.value }))} placeholder="BOOKING_CREATED" style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none" }} />
                 </label>
-              </div>
 
-              <label className="field">
-                <span>Performed by</span>
-                <input value={filters.performedBy} onChange={(event) => setFilters((current) => ({ ...current, performedBy: event.target.value }))} placeholder="admin@example.com" />
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 200px", minWidth: "180px" }}>
+                <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Performed by</span>
+                <input value={filters.performedBy} onChange={(event) => setFilters((current) => ({ ...current, performedBy: event.target.value }))} placeholder="admin@example.com" style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none" }} />
               </label>
 
-              <div className="form-grid form-grid--two">
-                <label className="field">
-                  <span>From</span>
-                  <input type="datetime-local" value={toDateTimeLocalValue(filters.from)} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} />
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 180px", minWidth: "150px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>From</span>
+                  <input type="datetime-local" value={toDateTimeLocalValue(filters.from)} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }} />
                 </label>
-                <label className="field">
-                  <span>To</span>
-                  <input type="datetime-local" value={toDateTimeLocalValue(filters.to)} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} />
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 180px", minWidth: "150px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>To</span>
+                  <input type="datetime-local" value={toDateTimeLocalValue(filters.to)} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }} />
                 </label>
-              </div>
 
-              <div className="form-grid form-grid--two">
-                <label className="field">
-                  <span>Sort</span>
-                  <select value={filters.sort} onChange={(event) => setFilters((current) => ({ ...current, sort: event.target.value }))}>
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 160px", minWidth: "140px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Sort</span>
+                  <select value={filters.sort} onChange={(event) => setFilters((current) => ({ ...current, sort: event.target.value }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
                     {AUDIT_SORT_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -248,9 +249,9 @@ export default function AuditPage() {
                   </select>
                 </label>
 
-                <label className="field">
-                  <span>Page size</span>
-                  <select value={filters.size} onChange={(event) => setFilters((current) => ({ ...current, size: Number(event.target.value) }))}>
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "0 0 120px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Page size</span>
+                  <select value={filters.size} onChange={(event) => setFilters((current) => ({ ...current, size: Number(event.target.value) }))} style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#1e293b", backgroundColor: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", outline: "none", cursor: "pointer" }}>
                     {PAGE_SIZE_OPTIONS.map((option) => (
                       <option key={option} value={option}>
                         {option}
@@ -258,15 +259,12 @@ export default function AuditPage() {
                     ))}
                   </select>
                 </label>
-              </div>
 
-              <div className="filter-actions">
-                <button type="submit" className="button button--primary">
-                  Apply audit filters
-                </button>
+              <div style={{ display: "flex", gap: "12px", flex: "1 1 100%", justifyContent: "flex-end", marginTop: "8px", paddingTop: "16px", borderTop: "1px dashed #cbd5e1" }}>
                 <button
                   type="button"
                   className="button button--subtle"
+                  style={{ padding: "8px 16px", minHeight: "36px", fontSize: "13px" }}
                   onClick={() => {
                     setFilters(filterTemplate);
                     setAppliedFilters(filterTemplate);
@@ -274,6 +272,9 @@ export default function AuditPage() {
                   }}
                 >
                   Reset
+                </button>
+                <button type="submit" className="button button--primary" style={{ padding: "8px 16px", minHeight: "36px", fontSize: "13px" }}>
+                  Apply audit filters
                 </button>
               </div>
             </form>
@@ -286,6 +287,12 @@ export default function AuditPage() {
           eyebrow="Audit stream"
           title={loading ? "Loading audit history" : `${pageData?.totalElements ?? 0} matching events`}
           description="Operational history remains queryable without leaving the admin cockpit."
+          actions={
+            <button type="button" className="button button--subtle" onClick={() => void loadAuditLogs(page, appliedFilters)}>
+              <RefreshCcw size={16} />
+              Refresh
+            </button>
+          }
           footer={<PaginationBar pageData={pageData} onPageChange={setPage} />}
         >
           {loading ? (
@@ -295,24 +302,53 @@ export default function AuditPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>When</th>
-                    <th>Entity</th>
+                    <th>Event & Entity</th>
                     <th>Action</th>
                     <th>Performed by</th>
                     <th>Details</th>
+                    <th>Time</th>
                   </tr>
                 </thead>
                 <tbody>
                   {auditRows.map((row) => (
                     <tr key={row.id}>
-                      <td>{formatCompactDateTime(row.createdAt)}</td>
                       <td>
-                        <StatusBadge value={row.entityType} variant="general" />
-                        <p className="table-subtext">#{row.entityId || "-"}</p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                          <div style={{ width: "40px", height: "40px", borderRadius: "8px", backgroundColor: "#f1f5f9", color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {getEntityIcon(row.entityType)}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "14px" }}>{row.entityType ? titleizeEnum(row.entityType) : "System"}</div>
+                            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px", fontFamily: "monospace", letterSpacing: "0.5px" }}>#{row.entityId || "SYS"}</div>
+                          </div>
+                        </div>
                       </td>
-                      <td>{row.action}</td>
-                      <td>{row.performedByEmail || row.performedByIdentifier || "System"}</td>
-                      <td>{row.details || "-"}</td>
+                      <td>
+                        <span style={{ display: "inline-flex", padding: "6px 10px", backgroundColor: "#eff6ff", color: "#3b82f6", borderRadius: "6px", fontSize: "12px", fontWeight: "600", border: "1px solid #dbeafe" }}>
+                          {row.action}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#e0e7ff", color: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", flexShrink: 0 }}>
+                            {(row.performedByEmail || row.performedByIdentifier || 'S').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: "500", color: "#1e293b", fontSize: "13px" }}>{row.performedByEmail || row.performedByIdentifier || "System"}</div>
+                            <div style={{ fontSize: "11px", color: "#64748b" }}>{row.performedByEmail ? "User Account" : "System Event"}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: "13px", color: "#475569", maxWidth: "300px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: "1.5" }}>
+                          {row.details || "-"}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: "13px", color: "#475569", whiteSpace: "nowrap" }}>
+                          {formatCompactDateTime(row.createdAt)}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

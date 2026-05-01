@@ -11,6 +11,7 @@ React + Vite frontend client for the Smart Campus Operations Hub backend.
 ```
 
 2. Make sure the backend is available at `http://localhost:8080`.
+3. The recommended backend setup uses a standalone MySQL Server, so XAMPP is not required for local frontend testing.
 3. If the login page says `Failed to fetch`, it usually means one of these:
 
 - the backend is not running on `http://localhost:8080`
@@ -24,6 +25,13 @@ React + Vite frontend client for the Smart Campus Operations Hub backend.
 - optional fallback redirect: `FRONTEND_BASE_URL`
 
 Otherwise, the local Basic Auth demo users are enough for manual demos.
+
+Optional H2 fallback mode:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE="h2"
+.\mvnw spring-boot:run
+```
 
 ## Frontend setup
 

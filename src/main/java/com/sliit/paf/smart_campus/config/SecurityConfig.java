@@ -12,12 +12,9 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -42,9 +39,10 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(Customizer.withDefaults())
+                .httpBasic(basic -> basic.authenticationEntryPoint((request, response, authException) -> 
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/error", "/login", "/login/**", "/oauth2/**", "/login/oauth2/**", "/oauth2/authorization/**", "/api/auth/status").permitAll()
+                        .requestMatchers("/error", "/login", "/login/**", "/oauth2/**", "/login/oauth2/**", "/oauth2/authorization/**", "/api/auth/status", "/api/auth/forgot-password", "/api/auth/reset-password", "/uploads/**", "/api/users/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/resources/**").permitAll()
                         .requestMatchers("/api/resources/**").hasRole("ADMIN")
                         .requestMatchers("/api/audit-logs/**", "/api/admin/**").hasRole("ADMIN")
@@ -87,39 +85,6 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService(AppSecurityProperties securityProperties, PasswordEncoder passwordEncoder) {
-        InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager();
-
-        if (!securityProperties.getDevUsers().isEnabled()) {
-            return manager;
-        }
-
-        UserDetails adminUser = org.springframework.security.core.userdetails.User
-                .withUsername(securityProperties.getDevUsers().getAdmin().getEmail())
-                .password(passwordEncoder.encode(securityProperties.getDevUsers().getAdmin().getPassword()))
-                .roles("ADMIN")
-                .build();
-
-        UserDetails standardUser = org.springframework.security.core.userdetails.User
-                .withUsername(securityProperties.getDevUsers().getUser().getEmail())
-                .password(passwordEncoder.encode(securityProperties.getDevUsers().getUser().getPassword()))
-                .roles("USER")
-                .build();
-
-        UserDetails technicianUser = org.springframework.security.core.userdetails.User
-                .withUsername(securityProperties.getDevUsers().getTechnician().getEmail())
-                .password(passwordEncoder.encode(securityProperties.getDevUsers().getTechnician().getPassword()))
-                .roles("TECHNICIAN")
-                .build();
-
-        manager.createUser(adminUser);
-        manager.createUser(standardUser);
-        manager.createUser(technicianUser);
-
-        return manager;
     }
 
     @Bean

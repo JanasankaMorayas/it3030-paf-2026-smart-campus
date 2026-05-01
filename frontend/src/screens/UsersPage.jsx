@@ -1,5 +1,6 @@
-import { Save, Shield, UserCog, Wrench } from "lucide-react";
+import { RefreshCcw, Save, Shield, Trash2, UserCog, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import FeedbackBanner from "../components/FeedbackBanner.jsx";
 import LoadingState from "../components/LoadingState.jsx";
@@ -20,6 +21,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
 
   async function loadUsers() {
     setLoading(true);
@@ -59,6 +61,22 @@ export default function UsersPage() {
     }
   }
 
+  async function handleDeleteConfirmed() {
+    if (!userToDelete) return;
+    
+    setError(null);
+    setMessage(null);
+    
+    try {
+      await api.users.remove(userToDelete.id);
+      setUserToDelete(null);
+      setMessage({ message: "User deleted successfully." });
+      await loadUsers();
+    } catch (deleteError) {
+      setError(deleteError);
+    }
+  }
+
   const adminCount = users.filter((user) => user.role === "ADMIN").length;
   const technicianCount = users.filter((user) => user.role === "TECHNICIAN").length;
   const activeCount = users.filter((user) => user.active).length;
@@ -87,11 +105,6 @@ export default function UsersPage() {
         eyebrow="Module E"
         title="Users and role control"
         description="Review synced users, check auth providers, and promote or demote operational roles."
-        actions={(
-          <button type="button" className="button button--ghost" onClick={() => void loadUsers()}>
-            Refresh users
-          </button>
-        )}
         meta={(
           <>
             <StatusBadge value="ADMIN" />
@@ -112,6 +125,12 @@ export default function UsersPage() {
           eyebrow="Directory"
           title={loading ? "Loading users" : `${users.length} users available`}
           description="Use the role selector to align each account with user, technician, or admin responsibilities."
+          actions={
+            <button type="button" className="button button--subtle" onClick={() => void loadUsers()}>
+              <RefreshCcw size={16} />
+              Refresh
+            </button>
+          }
         >
           {loading ? (
             <LoadingState title="Loading user directory" message="Pulling the current backend user list." lines={5} />
@@ -153,6 +172,16 @@ export default function UsersPage() {
                             <Save size={16} />
                             Save
                           </button>
+                      <button 
+                        type="button" 
+                        className="icon-button icon-button--danger" 
+                        style={{ marginLeft: "8px" }}
+                        onClick={() => setUserToDelete(user)}
+                        disabled={user.email === currentUser?.email}
+                        title={user.email === currentUser?.email ? "Cannot delete yourself" : "Delete user"}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                         </div>
                       </td>
                     </tr>
@@ -167,6 +196,16 @@ export default function UsersPage() {
             />
           )}
         </SectionCard>
+
+    <ConfirmDialog
+      open={Boolean(userToDelete)}
+      title="Delete User"
+      message={userToDelete ? `Are you sure you want to delete ${userToDelete.displayName} (${userToDelete.email})? This action cannot be undone.` : ""}
+      confirmLabel="Delete"
+      tone="danger"
+      onConfirm={handleDeleteConfirmed}
+      onClose={() => setUserToDelete(null)}
+    />
       </PageShell>
     </RoleGate>
   );

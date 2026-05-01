@@ -46,6 +46,9 @@ public class User {
     @Column(nullable = false, length = 50)
     private String provider;
 
+    @Column(name = "password", length = 255)
+    private String password;
+
     @Column(name = "provider_id", nullable = false, length = 150)
     private String providerId;
 

@@ -5,8 +5,11 @@ import { useAuth } from "./context/AuthContext.jsx";
 import AuditPage from "./screens/AuditPage.jsx";
 import BookingsPage from "./screens/BookingsPage.jsx";
 import DashboardPage from "./screens/DashboardPage.jsx";
+import ForgotPasswordPage from "./screens/ForgotPasswordPage.jsx";
 import LoginPage from "./screens/LoginPage.jsx";
+import RegisterPage from "./screens/RegisterPage.jsx";
 import NotificationsPage from "./screens/NotificationsPage.jsx";
+import ProfilePage from "./screens/ProfilePage.jsx";
 import ResourcesPage from "./screens/ResourcesPage.jsx";
 import TicketsPage from "./screens/TicketsPage.jsx";
 import UsersPage from "./screens/UsersPage.jsx";
@@ -54,12 +57,29 @@ function LoginRoute() {
   return <LoginPage />;
 }
 
+function RegisterRoute() {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return <FullScreenMessage title="Checking status" message="Please wait..." />;
+  }
+
+  if (currentUser) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <RegisterPage />;
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
+      <Route path="/register" element={<RegisterRoute />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route element={<ProtectedLayout />}>
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/resources" element={<ResourcesPage />} />
         <Route path="/bookings" element={<BookingsPage />} />
         <Route path="/tickets" element={<TicketsPage />} />
