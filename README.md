@@ -42,7 +42,7 @@ Implemented in this sprint:
 
 ## Tech stack
 
-- Java 25
+- Java 17
 - Spring Boot 4
 - Spring Data JPA
 - MySQL standalone for default local development
