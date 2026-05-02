@@ -10,6 +10,9 @@ jobs:
   backend-build:
     name: Build Spring Boot Backend
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
     steps:
     - uses: actions/checkout@v4
     
