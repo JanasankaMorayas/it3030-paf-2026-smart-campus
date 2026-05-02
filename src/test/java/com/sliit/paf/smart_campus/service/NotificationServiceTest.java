@@ -191,8 +191,8 @@ class NotificationServiceTest {
         );
 
         assertThat(responses.getContent()).hasSize(1);
-        assertThat(responses.getContent().getFirst().getId()).isEqualTo(5L);
-        assertThat(responses.getContent().getFirst().getRecipientEmail()).isEqualTo("member@example.com");
+        assertThat(responses.getContent().get(0).getId()).isEqualTo(5L);
+        assertThat(responses.getContent().get(0).getRecipientEmail()).isEqualTo("member@example.com");
         assertThat(responses.getPage()).isEqualTo(0);
         assertThat(responses.getTotalElements()).isEqualTo(1);
     }
