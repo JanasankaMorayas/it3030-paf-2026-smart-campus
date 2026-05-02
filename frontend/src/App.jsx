@@ -6,6 +6,7 @@ import AuditPage from "./screens/AuditPage.jsx";
 import BookingsPage from "./screens/BookingsPage.jsx";
 import DashboardPage from "./screens/DashboardPage.jsx";
 import ForgotPasswordPage from "./screens/ForgotPasswordPage.jsx";
+import BookingVerificationPage from "./screens/BookingVerificationPage.jsx";
 import LoginPage from "./screens/LoginPage.jsx";
 import RegisterPage from "./screens/RegisterPage.jsx";
 import NotificationsPage from "./screens/NotificationsPage.jsx";
@@ -82,6 +83,7 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/resources" element={<ResourcesPage />} />
         <Route path="/bookings" element={<BookingsPage />} />
+        <Route path="/bookings/verify/:id" element={<BookingVerificationPage />} />
         <Route path="/tickets" element={<TicketsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/users" element={<UsersPage />} />

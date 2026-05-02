@@ -1,4 +1,4 @@
-import { CheckCircle2, Pencil, Plus, RefreshCcw, XCircle, CalendarRange, Users, FileText } from "lucide-react";
+import { CheckCircle2, Pencil, Plus, RefreshCcw, XCircle, CalendarRange, Users, FileText, QrCode } from "lucide-react";
 import { useEffect, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import DataToolbar from "../components/DataToolbar.jsx";
@@ -49,6 +49,7 @@ export default function BookingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [statusModal, setStatusModal] = useState({ open: false, bookingId: null, status: "APPROVED", adminDecisionReason: "" });
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [qrModal, setQrModal] = useState({ open: false, booking: null });
 
   async function loadResources() {
     const response = await api.resources.list();
@@ -409,6 +410,12 @@ export default function BookingsPage() {
                             </>
                           ) : null}
 
+                          {booking.status === "APPROVED" ? (
+                            <button type="button" className="icon-button" onClick={() => setQrModal({ open: true, booking })} aria-label="Show QR Code" title="Check-in QR">
+                              <QrCode size={16} />
+                            </button>
+                          ) : null}
+
                           {canCancel ? (
                             <button type="button" className="button button--subtle" onClick={() => setCancelTarget(booking)} title="Cancel booking">
                               Cancel
@@ -548,6 +555,35 @@ export default function BookingsPage() {
         onConfirm={handleCancelConfirmed}
         onClose={() => setCancelTarget(null)}
       />
+
+      <Modal
+        isOpen={qrModal.open}
+        title="Check-in QR Code"
+        subtitle="Scan this code at the facility to verify your approved reservation."
+        onClose={() => setQrModal({ open: false, booking: null })}
+      >
+        {qrModal.booking && (
+          <div style={{ textAlign: "center", padding: "20px" }}>
+            <div style={{ background: "white", padding: "16px", display: "inline-block", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "16px" }}>
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/bookings/verify/${qrModal.booking.id}`)}`} 
+                alt="Booking QR Code" 
+                width="200" 
+                height="200" 
+              />
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", color: "#1e293b" }}>{qrModal.booking.resourceName}</h3>
+            <p style={{ margin: "0 0 4px 0", color: "#64748b", fontSize: "14px" }}>
+              {formatDateRange(qrModal.booking.startTime, qrModal.booking.endTime)}
+            </p>
+            <div className="modal-actions" style={{ marginTop: "24px", justifyContent: "center" }}>
+              <button type="button" className="button button--ghost" onClick={() => setQrModal({ open: false, booking: null })}>Close</button>
+              <button type="button" className="button button--primary" onClick={() => window.open(`/bookings/verify/${qrModal.booking.id}`, '_blank')}>Open Verification Page</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
     </PageShell>
   );
 }
